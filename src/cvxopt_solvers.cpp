@@ -2,7 +2,7 @@
 #include <iostream>
 #include <arc_utilities/arc_exceptions.hpp>
 
-using namespace smmap;
+using namespace smmap_utilities;
 
 PyObject* CVXOptSolvers::solvers_ = nullptr;
 PyObject* CVXOptSolvers::lp_ = nullptr;

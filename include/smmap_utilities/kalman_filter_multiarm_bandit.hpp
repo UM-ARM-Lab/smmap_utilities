@@ -12,7 +12,7 @@
 #include <arc_utilities/pretty_print.hpp>
 #include <arc_utilities/eigen_helpers.hpp>
 
-namespace smmap
+namespace smmap_utilities
 {
     template <typename Generator = std::mt19937_64>
     class KalmanFilterMANB

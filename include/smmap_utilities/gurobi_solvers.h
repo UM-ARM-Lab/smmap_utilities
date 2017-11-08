@@ -3,7 +3,7 @@
 
 #include <Eigen/Dense>
 
-namespace smmap
+namespace smmap_utilities
 {
     Eigen::VectorXd minSquaredNorm(const Eigen::MatrixXd& A, const Eigen::VectorXd& b, const double max_x_norm);
     Eigen::VectorXd minSquaredNorm(const Eigen::MatrixXd& A, const Eigen::VectorXd& b, const double max_x_norm, const Eigen::VectorXd& weights);

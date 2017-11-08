@@ -5,7 +5,7 @@
 #include <Eigen/Dense>
 #include <cvxopt/cvxopt.h>
 
-namespace smmap
+namespace smmap_utilities
 {
     class CVXOptSolvers
     {

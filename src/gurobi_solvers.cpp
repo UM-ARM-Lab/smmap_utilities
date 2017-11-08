@@ -81,7 +81,7 @@ std::vector<GRBLinExpr> buildVectorOfExperssions(const MatrixXd& A, GRBVar* vars
     return exprs;
 }
 
-VectorXd smmap::minSquaredNorm(const MatrixXd& A, const VectorXd& b, const double max_x_norm)
+VectorXd smmap_utilities::minSquaredNorm(const MatrixXd& A, const VectorXd& b, const double max_x_norm)
 {
     VectorXd x;
     GRBVar* vars = nullptr;
@@ -134,7 +134,7 @@ VectorXd smmap::minSquaredNorm(const MatrixXd& A, const VectorXd& b, const doubl
     return x;
 }
 
-VectorXd smmap::minSquaredNorm(const MatrixXd& A, const VectorXd& b, const double max_x_norm, const VectorXd& weights)
+VectorXd smmap_utilities::minSquaredNorm(const MatrixXd& A, const VectorXd& b, const double max_x_norm, const VectorXd& weights)
 {
     VectorXd x;
     GRBVar* vars = nullptr;
@@ -198,7 +198,7 @@ VectorXd smmap::minSquaredNorm(const MatrixXd& A, const VectorXd& b, const doubl
     return x;
 }
 
-Eigen::VectorXd smmap::minSquaredNormSE3VelocityConstraints(const Eigen::MatrixXd& A, const Eigen::VectorXd& b, const double max_se3_velocity, const Eigen::VectorXd& weights)
+Eigen::VectorXd smmap_utilities::minSquaredNormSE3VelocityConstraints(const Eigen::MatrixXd& A, const Eigen::VectorXd& b, const double max_se3_velocity, const Eigen::VectorXd& weights)
 {
     VectorXd x;
     GRBVar* vars = nullptr;

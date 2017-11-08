@@ -9,7 +9,7 @@
 
 #include <Eigen/Dense>
 
-namespace smmap
+namespace smmap_utilities
 {
     template <typename Generator = std::mt19937_64>
     class UCB1Normal
