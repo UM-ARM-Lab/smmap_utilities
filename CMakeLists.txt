@@ -4,13 +4,13 @@ project(smmap_utilities)
 set(CATKIN_PACKAGES
     arc_utilities
     geometry_msgs
+    deformable_manipulation_experiment_params
 )
 
     # actionlib
     # kinematics_toolbox
     # sdf_tools
     # deformable_manipulation_msgs
-    # deformable_manipulation_experiment_params
 
 ## Add our local cmake modules to the list that can be found
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake/modules")
@@ -19,9 +19,9 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake/modules")
 find_package(catkin REQUIRED COMPONENTS ${CATKIN_PACKAGES})
 
 ## System dependencies are found with CMake's conventions
-# find_package(cmake_modules REQUIRED)
-# find_package(Eigen3 REQUIRED)
-# set(Eigen3_INCLUDE_DIRS ${EIGEN3_INCLUDE_DIR})
+find_package(cmake_modules REQUIRED)
+find_package(Eigen3 REQUIRED)
+set(Eigen3_INCLUDE_DIRS ${EIGEN3_INCLUDE_DIR})
 find_package(PythonLibs 2.7 REQUIRED)
 find_package(GUROBI REQUIRED)
 
@@ -35,8 +35,8 @@ catkin_package(
     LIBRARIES       ${PROJECT_NAME}
     CATKIN_DEPENDS  ${CATKIN_PACKAGES}
     DEPENDS         GUROBI
+                    Eigen3
 )
-    # DEPENDS         Eigen3
 
 ###########
 ## Build ##
@@ -49,10 +49,10 @@ include_directories(include
     ${catkin_INCLUDE_DIRS}
     ${PYTHON_INCLUDE_DIRS}
     ${GUROBI_INCLUDE_DIRS}
+    ${EIGEN3_INCLUDE_DIRS}
 )
 
     # ${Boost_INCLUDE_DIRS}
-    # ${EIGEN3_INCLUDE_DIRS}
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++0x -flto -O3 -g -Wall -Wextra -Wpedantic -Wconversion")
 
