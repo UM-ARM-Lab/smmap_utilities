@@ -4,6 +4,7 @@ project(smmap_utilities)
 set(CATKIN_PACKAGES
     arc_utilities
     geometry_msgs
+    kinematics_toolbox
     deformable_manipulation_experiment_params
 )
 
@@ -24,6 +25,7 @@ find_package(Eigen3 REQUIRED)
 set(Eigen3_INCLUDE_DIRS ${EIGEN3_INCLUDE_DIR})
 find_package(PythonLibs 2.7 REQUIRED)
 find_package(GUROBI REQUIRED)
+find_package(NOMAD REQUIRED)
 
 
 ###################################
@@ -35,6 +37,7 @@ catkin_package(
     LIBRARIES       ${PROJECT_NAME}
     CATKIN_DEPENDS  ${CATKIN_PACKAGES}
     DEPENDS         GUROBI
+                    NOMAD
                     Eigen3
 )
 
@@ -49,6 +52,7 @@ include_directories(include
     ${catkin_INCLUDE_DIRS}
     ${PYTHON_INCLUDE_DIRS}
     ${GUROBI_INCLUDE_DIRS}
+    ${NOMAD_INCLUDE_DIRS}
     ${EIGEN3_INCLUDE_DIRS}
 )
 
@@ -69,6 +73,6 @@ add_library(${PROJECT_NAME}
 	${hpp_SRC}
 	${h_SRC}
 	${cpp_SRC})
-add_dependencies(${PROJECT_NAME} ${catkin_EXPORTED_TARGETS}) # ${PROJECT_NAME}_gencpp)
+add_dependencies(${PROJECT_NAME} ${catkin_EXPORTED_TARGETS} ${GUROBI_LIBRARIES} ${NOMAD_LIBRARIES})
 target_link_libraries(${PROJECT_NAME} ${catkin_LIBRARIES})
 
