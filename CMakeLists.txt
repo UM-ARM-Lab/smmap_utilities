@@ -36,9 +36,10 @@ catkin_package(
     INCLUDE_DIRS    include
     LIBRARIES       ${PROJECT_NAME}
     CATKIN_DEPENDS  ${CATKIN_PACKAGES}
-    DEPENDS         GUROBI
+    DEPENDS         Eigen3
+                    GUROBI
                     NOMAD
-                    Eigen3
+
 )
 
 ###########
@@ -51,12 +52,10 @@ include_directories(include
     SYSTEM
     ${catkin_INCLUDE_DIRS}
     ${PYTHON_INCLUDE_DIRS}
+    ${EIGEN3_INCLUDE_DIRS}
     ${GUROBI_INCLUDE_DIRS}
     ${NOMAD_INCLUDE_DIRS}
-    ${EIGEN3_INCLUDE_DIRS}
 )
-
-    # ${Boost_INCLUDE_DIRS}
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++0x -flto -O3 -g -Wall -Wextra -Wpedantic -Wconversion")
 
@@ -70,9 +69,9 @@ FILE(GLOB h_SRC "include/${PROJECT_NAME}/*.h")
 FILE(GLOB cpp_SRC "src/*.cpp")
 
 add_library(${PROJECT_NAME}
-	${hpp_SRC}
-	${h_SRC}
-	${cpp_SRC})
-add_dependencies(${PROJECT_NAME} ${catkin_EXPORTED_TARGETS} ${GUROBI_LIBRARIES} ${NOMAD_LIBRARIES})
-target_link_libraries(${PROJECT_NAME} ${catkin_LIBRARIES})
+    ${hpp_SRC}
+    ${h_SRC}
+    ${cpp_SRC})
+add_dependencies(${PROJECT_NAME} ${catkin_EXPORTED_TARGETS})
+target_link_libraries(${PROJECT_NAME} ${catkin_LIBRARIES} ${GUROBI_LIBRARIES} ${NOMAD_LIBRARIES})
 
