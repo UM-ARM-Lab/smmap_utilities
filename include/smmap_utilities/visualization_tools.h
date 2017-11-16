@@ -8,13 +8,11 @@
 
 namespace smmap_utilities
 {
-    // TODO: Move these elsewhere, potentially to a location that is then used by smmap/trajectory.hpp
-    typedef Eigen::Matrix3Xd ObjectPointSet;
-    typedef std::vector<ObjectPointSet> ObjectTrajectory;
-    typedef std::vector<ObjectTrajectory> VectorObjectTrajectory;
-
     class Visualizer
     {
+        // TODO: Move these elsewhere, potentially to a location that is then used by smmap/trajectory.hpp
+        typedef Eigen::Matrix3Xd ObjectPointSet;
+
         public:
             static void InitializeStandardColors();
             static std_msgs::ColorRGBA Red(const float alpha = 1.0f);
