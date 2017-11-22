@@ -2,6 +2,7 @@
 #define NOMAD_SOLVERS_H
 
 #include <nomad.hpp>
+#include "smmap/task_function_pointer_types.h"
 #include <Eigen/Dense>
 #include <arc_utilities/eigen_helpers.hpp>
 #include <kinematics_toolbox/kinematics.h>
@@ -19,6 +20,9 @@ namespace smmap_utilities
           GripperMotionNomadEvaluator(
                   const NOMAD::Parameters& p,
                   const ssize_t num_grippers,
+                  const double gripper_radius,
+                  const double stretching_threshold,
+                  const double max_step_size,
                   const std::function<double(const AllGrippersSinglePoseDelta& test_gripper_motion)>& eval_error_cost_fn,
                   const std::function<double(const AllGrippersSinglePoseDelta& test_gripper_motion)>& collision_constraint_fn,
                   const std::function<double(const AllGrippersSinglePoseDelta& test_gripper_motion)>& stretching_constraint_fn,
@@ -36,12 +40,19 @@ namespace smmap_utilities
         private:
           const ssize_t num_grippers_;
 
-          const std::function<double(const AllGrippersSinglePoseDelta& test_gripper_motion)> eval_error_cost_fn_;
-          const std::function<double(const AllGrippersSinglePoseDelta& test_gripper_motion)> collision_constraint_fn_;
-          const std::function<double(const AllGrippersSinglePoseDelta& test_gripper_motion)> stretching_constraint_fn_;
-          const std::function<double(const AllGrippersSinglePoseDelta& test_gripper_motion)> gripper_motion_constraint_fn_;
+          const NOMAD::Double gripper_radius_;
+          const NOMAD::Double stretching_threshold_;
+          const NOMAD::Double max_step_size_;
+          const std::function<double(const AllGrippersSinglePoseDelta& test_gripper_motion)>& eval_error_cost_fn_;
+          const AllGrippersCollisionConstraintFunctionType& collision_constraint_fn_;
+          const AllGrippersStretchingConstraintFunctionType& stretching_constraint_fn_;
+          const AllGrippersMotionSizeConstraintFunctionType& gripper_motion_constraint_fn_;
           const bool fix_step_size_;
+          // const sdf_tools::SignedDistanceField enviroment_sdf_;
+
     };
+
+
 }
 
 #endif // NOMAD_SOLVERS_H

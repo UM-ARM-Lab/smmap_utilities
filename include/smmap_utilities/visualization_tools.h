@@ -6,7 +6,9 @@
 #include <deformable_manipulation_experiment_params/ros_params.hpp>
 #include <arc_utilities/eigen_helpers.hpp>
 
-namespace smmap_utilities
+#include "smmap/trajectory.hpp"
+
+namespace smmap
 {
     class Visualizer
     {
@@ -108,6 +110,12 @@ namespace smmap_utilities
                     const std::vector<std_msgs::ColorRGBA>& colors,
                     const int32_t id = 1) const;
 
+            visualization_msgs::MarkerArray::_markers_type createGripperMarker(
+                    const std::string& marker_name,
+                    const Eigen::Isometry3d& eigen_pose,
+                    const std_msgs::ColorRGBA& color,
+                    const int32_t id = 1) const;
+
             void visualizeGripper(
                     const std::string& marker_name,
                     const Eigen::Isometry3d& eigen_pose,
@@ -126,6 +134,16 @@ namespace smmap_utilities
                     const ObjectPointSet& desired,
                     const std_msgs::ColorRGBA& color,
                     const int32_t id = 2) const;
+
+
+            // Visualization tool for object wrench (1D rope). --- Added by Mengyao
+            // Q: What should be the right id?
+            void visualizeObjectForce(
+                    const std::string& marker_name,
+                    const ObjectPointSet& current,
+                    const std::vector<Eigen::Vector3d>& force,
+                    const std_msgs::ColorRGBA& color,
+                    const int32_t id = 4) const;
 
             void visualizeTranslation(
                     const std::string& marker_name,

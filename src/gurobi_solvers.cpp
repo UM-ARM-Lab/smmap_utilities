@@ -3,6 +3,7 @@
 #include <iostream>
 #include <mutex>
 #include <Eigen/Eigenvalues>
+#include <arc_utilities/eigen_helpers.hpp>
 
 using namespace Eigen;
 
@@ -62,6 +63,19 @@ GRBQuadExpr normSquared(GRBVar* vars, const size_t num_vars)
 
     return vector_norm_squared;
 }
+
+
+GRBLinExpr linearSum(const MatrixXd& row_coeff, GRBVar* vars)
+{
+    GRBLinExpr linear_sum = 0;
+    ssize_t num_rows = row_coeff.cols();
+    for (ssize_t ind = 0; ind < num_rows; ind++)
+    {
+        linear_sum += row_coeff(ind) * vars[ind];
+    }
+    return linear_sum;
+}
+
 
 std::vector<GRBLinExpr> buildVectorOfExperssions(const MatrixXd& A, GRBVar* vars, const VectorXd& b)
 {
@@ -273,3 +287,103 @@ Eigen::VectorXd smmap_utilities::minSquaredNormSE3VelocityConstraints(const Eige
     delete[] vars;
     return x;
 }
+
+//Eigen::VectorXd smmap_utilities::minAbsoluteDeviation(const Eigen::MatrixXd& X, const Eigen::VectorXd& y, const Eigen::VectorXd& weights)
+Eigen::VectorXd smmap_utilities::minAbsoluteDeviation(const Eigen::MatrixXd& X, const Eigen::VectorXd& y)
+{
+    // min ||y - X*beta||_1;    X in R ^ n*m   ===>
+    // min(f^T * x); subject to A * x <= b
+    // f = [ 0_m; 1_n]
+    // A = [X, -I_n;  -X, -I_n]   [2n * (m+n)]
+    // x = [beta; r] (vars)           [(n+m) * 1]
+    // b = [y, -y]
+    //(void) weights;
+
+    VectorXd x;
+    GRBVar* vars = nullptr;
+    try
+    {
+        const ssize_t dim_beta = X.cols();
+        const ssize_t dim_y = y.rows();
+        assert(dim_y == X.rows());
+        const ssize_t num_vars = dim_beta + dim_y;
+
+        //const double max_coordinate = 1.0;
+        Eigen::VectorXd eigen_lb = Eigen::MatrixXd::Ones(num_vars, 1);
+        Eigen::VectorXd eigen_ub = -Eigen::MatrixXd::Ones(num_vars, 1);
+        eigen_lb.tail(dim_y) = Eigen::MatrixXd::Zero(dim_y, 1);
+        eigen_ub.tail(dim_y) = Eigen::MatrixXd::Ones(dim_y, 1) * INFINITY;
+
+        //const std::vector<double> lb(num_vars, -max_coordinate);
+        //const std::vector<double> ub(num_vars, max_coordinate);
+        const std::vector<double> lb = EigenHelpers::EigenVectorXdToStdVectorDouble(eigen_lb);
+        const std::vector<double> ub = EigenHelpers::EigenVectorXdToStdVectorDouble(eigen_ub);;
+
+        // TODO: Find a way to put a scoped lock here. What's the functionality of this block of code? (to ".update()")
+        gurobi_env_construct_mtx.lock();
+        GRBEnv env;
+        gurobi_env_construct_mtx.unlock();
+
+        env.set(GRB_IntParam_OutputFlag, 0);
+        GRBModel model(env);
+        vars = model.addVars(lb.data(), ub.data(), nullptr, nullptr, nullptr, (int)num_vars);
+        model.update();
+
+        // Construct the Linear Program
+        VectorXd f = MatrixXd::Zero(num_vars, 1);
+        f.tail(dim_y) = MatrixXd::Ones(dim_y, 1);
+
+        MatrixXd A = MatrixXd::Zero(2 * dim_y, num_vars);
+        A.topLeftCorner(dim_y, dim_beta) = X;
+        A.bottomLeftCorner(dim_y, dim_beta) = -X;
+
+        VectorXd b = MatrixXd::Zero(dim_y * 2, 1);
+        b.head(dim_y) = y;
+        b.tail(dim_y) = -y;
+
+
+        // Add constraint: "subject to A * x <= b"
+        for (ssize_t ind = 0; ind < A.rows(); ind++)
+        {
+            model.addConstr(linearSum(A.row(ind), vars), GRB_LESS_EQUAL, b(ind));
+        }
+
+        // Build the objective function: min(f^T * x);
+        GRBQuadExpr objective_fn = 0;
+        // GRBLinExpr objective_fn = 0;
+        objective_fn.addTerms(f.data(), vars, (int)num_vars);
+
+        model.setObjective(objective_fn, GRB_MINIMIZE);
+
+        model.update();
+        model.optimize();
+
+        // Only return the values of beta; not include the residual
+        if (model.get(GRB_IntAttr_Status) == GRB_OPTIMAL)
+        {
+            x.resize(dim_beta);
+            for (ssize_t var_ind = 0; var_ind < dim_beta; var_ind++)
+            {
+                x(var_ind) = vars[var_ind].get(GRB_DoubleAttr_X);
+            }
+        }
+        else
+        {
+            std::cout << "Status: " << model.get(GRB_IntAttr_Status) << std::endl;
+            exit(-1);
+        }
+    }
+    catch(GRBException& e)
+    {
+        std::cout << "Error code = " << e.getErrorCode() << std::endl;
+        std::cout << e.getMessage() << std::endl;
+    }
+    catch(...)
+    {
+        std::cout << "Exception during optimization" << std::endl;
+    }
+
+    delete[] vars;
+    return x;
+}
+
