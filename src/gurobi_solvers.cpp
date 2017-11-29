@@ -288,7 +288,7 @@ Eigen::VectorXd smmap_utilities::minSquaredNormSE3VelocityConstraints(const Eige
     return x;
 }
 
-// TODO: Least Square with 1-norm regularization
+// Least Square with 1-norm regularization
 Eigen::VectorXd smmap_utilities::minSquaredNormL1NormRegularization(
         const Eigen::MatrixXd& A,
         const Eigen::VectorXd& b,
@@ -316,33 +316,36 @@ Eigen::VectorXd smmap_utilities::minSquaredNormL1NormRegularization(
     //
     // (x_last - x) .<= r;   (x - x_last) .<= r;
     // C = [ -I   -I ]
-    //     [  I    I ];
+    //     [  I   -I ];
     // l = [ -x_last ]
     //     [  x_last ];
     // C beta <= l
     //
     */
+    (void) max_coordinate;
 
     const ssize_t dim_x = A.cols();
     const ssize_t dim_r = dim_x;
-    assert(dim_r == A.rows());
     const ssize_t num_vars = dim_x + dim_r;
+    assert(A.rows() == weights.rows());
 
     VectorXd beta = Eigen::MatrixXd::Zero(num_vars, 1);
     GRBVar* vars = nullptr;
 
     try
     {
+        /* // TODO: So lb and up is not neccessary?
         //const double max_coordinate = 1.0;
         Eigen::VectorXd eigen_lb = max_coordinate * (Eigen::MatrixXd::Ones(num_vars, 1));
         Eigen::VectorXd eigen_ub = -max_coordinate * (Eigen::MatrixXd::Ones(num_vars, 1));
 
         // residual is greater than 0
-        eigen_lb.tail(dim_r) = -Eigen::MatrixXd::Zero(dim_r, 1);
+        eigen_lb.tail(dim_r) = -Eigen::MatrixXd::Zero(dim_r, 1) * INFINITY;
         eigen_ub.tail(dim_r) = Eigen::MatrixXd::Ones(dim_r, 1) * INFINITY;
 
         const std::vector<double> lb = EigenHelpers::EigenVectorXdToStdVectorDouble(eigen_lb);
         const std::vector<double> ub = EigenHelpers::EigenVectorXdToStdVectorDouble(eigen_ub);;
+        */
 
         // TODO: Find a way to put a scoped lock here. What's the functionality of this block of code? (to ".update()")
         gurobi_env_construct_mtx.lock();
@@ -351,7 +354,9 @@ Eigen::VectorXd smmap_utilities::minSquaredNormL1NormRegularization(
 
         env.set(GRB_IntParam_OutputFlag, 0);
         GRBModel model(env);
-        vars = model.addVars(lb.data(), ub.data(), nullptr, nullptr, nullptr, (int)num_vars);
+
+        //vars = model.addVars(lb.data(), ub.data(), nullptr, nullptr, nullptr, (int)num_vars);
+        vars = model.addVars(nullptr, nullptr, nullptr, nullptr, nullptr, (int)num_vars);
         model.update();
 
         // Quadratic term
@@ -368,11 +373,19 @@ Eigen::VectorXd smmap_utilities::minSquaredNormL1NormRegularization(
         // Constant term
         const double L0 = b.transpose() * weights.asDiagonal() * b;
 
+        // Constraint
+        const Eigen::MatrixXd I_dim_x = Eigen::MatrixXd::Identity(dim_x, dim_x);
+        //const Eigen::MatrixXd I_dim_r = Eigen::MatrixXd::Identity(dim_r, dim_r);
+        Eigen::MatrixXd C = -Eigen::MatrixXd::Identity(num_vars, num_vars);
+        C.topRightCorner(dim_r, dim_r) = -I_dim_x;
+        C.bottomLeftCorner(dim_x, dim_x) = I_dim_x;
+        Eigen::VectorXd l = Eigen::MatrixXd::Zero(dim_x * 2, 1);
+        l.head(dim_x) = -x_last;
+        l.tail(dim_x) = x_last;
 
-        // Add the SE3 velocity constraints
-        for (ssize_t i = 0; i < num_vars / 6; ++i)
+        for (ssize_t ind = 0; ind < num_vars; ind++)
         {
-            model.addQConstr(normSquared(&vars[i * 6], 6), GRB_LESS_EQUAL, max_coordinate * max_coordinate);
+            model.addConstr(linearSum(C.row(ind), vars), GRB_LESS_EQUAL, l(ind));
         }
 
         /* // TODO: Why Dale has these step here?
@@ -385,8 +398,6 @@ Eigen::VectorXd smmap_utilities::minSquaredNormL1NormRegularization(
             Q += Eigen::MatrixXd::Identity(num_vars, num_vars) * (1.400001e-4 - min_eigenvalue);
         }
         */
-
-        // const Eigen::RowVectorXd L = -2.0 * b.transpose() * weights.asDiagonal() * A;
 
         GRBQuadExpr objective_fn = buildQuadraticTerm(vars, vars, Q);
         objective_fn.addTerms(K.data(), vars, (int)num_vars);
@@ -424,11 +435,11 @@ Eigen::VectorXd smmap_utilities::minSquaredNormL1NormRegularization(
     return beta.head(dim_x);
 }
 
-
-
 // TODO: Return "infeasible". Need to figure out the reason
 //Eigen::VectorXd smmap_utilities::minAbsoluteDeviation(const Eigen::MatrixXd& X, const Eigen::VectorXd& y, const Eigen::VectorXd& weights)
-Eigen::VectorXd smmap_utilities::minAbsoluteDeviation(const Eigen::MatrixXd& X, const Eigen::VectorXd& y)
+Eigen::VectorXd smmap_utilities::minAbsoluteDeviation(
+        const Eigen::MatrixXd& X,
+        const Eigen::VectorXd& y)
 {
     // min ||y - X*beta||_1;    X in R ^ n*m   ===>
     // min(f^T * x); subject to A * x <= b

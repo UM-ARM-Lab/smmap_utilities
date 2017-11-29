@@ -27,8 +27,8 @@ namespace smmap_utilities
             const Eigen::VectorXd& b,
             const Eigen::VectorXd& x_last,
             const Eigen::VectorXd& weights,
-            const double c_regularization = 0.01,
-            const double max_coordinate = 1.0);
+            const double c_regularization = 0.001,
+            const double max_coordinate = 5.0);
 
     Eigen::VectorXd minAbsoluteDeviation(
             const Eigen::MatrixXd& A,
