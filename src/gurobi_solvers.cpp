@@ -388,16 +388,12 @@ Eigen::VectorXd smmap_utilities::minSquaredNormL1NormRegularization(
             model.addConstr(linearSum(C.row(ind), vars), GRB_LESS_EQUAL, l(ind));
         }
 
-        /* // TODO: Why Dale has these step here?
-        // Build up the matrix expressions
-        // min || A x - b ||^2_W is the same as min x^T A^T W A x - 2 b^T W A x = x^T Q x + L x
-        Eigen::MatrixXd Q = A.transpose() * weights.asDiagonal() * A;
+        // TODO: Why Dale has these step here?
         const double min_eigenvalue = Q.selfadjointView<Upper>().eigenvalues().minCoeff();
         if (min_eigenvalue < 1.1e-4)
         {
             Q += Eigen::MatrixXd::Identity(num_vars, num_vars) * (1.400001e-4 - min_eigenvalue);
-        }
-        */
+        }        
 
         GRBQuadExpr objective_fn = buildQuadraticTerm(vars, vars, Q);
         objective_fn.addTerms(K.data(), vars, (int)num_vars);
@@ -476,7 +472,8 @@ Eigen::VectorXd smmap_utilities::minAbsoluteDeviation(
 
         env.set(GRB_IntParam_OutputFlag, 0);
         GRBModel model(env);
-        vars = model.addVars(lb.data(), ub.data(), nullptr, nullptr, nullptr, (int)num_vars);
+        vars = model.addVars(nullptr, nullptr, nullptr, nullptr, nullptr, (int)num_vars);
+        // vars = model.addVars(lb.data(), ub.data(), nullptr, nullptr, nullptr, (int)num_vars);
         model.update();
 
         // Construct the Linear Program
