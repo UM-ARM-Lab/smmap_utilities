@@ -41,8 +41,6 @@ namespace smmap_utilities
           const std::function<double(const AllGrippersSinglePoseDelta& test_gripper_motion)> stretching_constraint_fn_;
           const std::function<double(const AllGrippersSinglePoseDelta& test_gripper_motion)> gripper_motion_constraint_fn_;
           const bool fix_step_size_;
-          // const sdf_tools::SignedDistanceField enviroment_sdf_;
-
     };
 }
 
