@@ -212,7 +212,7 @@ Visualizer::Visualizer(
     if (!disable_all_visualizations_)
     {
         clear_markers_srv_.waitForExistence();
-        visualization_marker_pub_        = nh.advertise<visualization_msgs::Marker>(marker_topic, 256);
+        visualization_marker_pub_ = nh.advertise<visualization_msgs::Marker>(marker_topic, 256);
     }
 }
 
