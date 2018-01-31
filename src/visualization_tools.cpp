@@ -301,6 +301,9 @@ void Visualizer::visualizePoints(
         marker.points = EigenHelpersConversions::VectorEigenVector3dToVectorGeometryPoint(points);
         marker.colors = colors;
 
+        // Assumes that all non specified values are 0.0
+        marker.pose.orientation.w = 1.0;
+
         marker.header.stamp = ros::Time::now();
         visualization_marker_pub_.publish(marker);
     }
@@ -318,7 +321,6 @@ void Visualizer::visualizeCubes(
         visualization_msgs::Marker marker;
 
         marker.header.frame_id = world_frame_name_;
-        marker.pose.orientation.w = 1.0;
 
         marker.type = visualization_msgs::Marker::CUBE_LIST;
         marker.ns = marker_name;
@@ -326,6 +328,9 @@ void Visualizer::visualizeCubes(
         marker.scale = EigenHelpersConversions::EigenVector3dToGeometryVector3(scale);
         marker.points = EigenHelpersConversions::VectorEigenVector3dToVectorGeometryPoint(points);
         marker.color = color;
+
+        // Assumes that all non specified values are 0.0
+        marker.pose.orientation.w = 1.0;
 
         marker.header.stamp = ros::Time::now();
         visualization_marker_pub_.publish(marker);
@@ -431,6 +436,10 @@ void Visualizer::visualizeRope(
         marker.scale.x = 0.005;
         marker.points = EigenHelpersConversions::EigenMatrix3XdToVectorGeometryPoint(rope);
         marker.colors = colors;
+
+        // Assumes that all non specified values are 0.0
+        marker.pose.orientation.w = 1.0;
+
         marker.header.stamp = ros::Time::now();
         visualization_marker_pub_.publish(marker);
 
@@ -439,6 +448,10 @@ void Visualizer::visualizeRope(
         marker.scale.x = 0.015;
         marker.scale.y = 0.015;
         marker.scale.z = 0.015;
+
+        // Assumes that all non specified values are 0.0
+        marker.pose.orientation.w = 1.0;
+
         marker.header.stamp = ros::Time::now();
         visualization_marker_pub_.publish(marker);
     }
@@ -476,6 +489,9 @@ void Visualizer::visualizeCloth(
         marker.scale.y = 0.005;
         marker.points = EigenHelpersConversions::EigenMatrix3XdToVectorGeometryPoint(cloth);
         marker.colors = colors;
+
+        // Assumes that all non specified values are 0.0
+        marker.pose.orientation.w = 1.0;
 
         marker.header.stamp = ros::Time::now();
         visualization_marker_pub_.publish(marker);
@@ -558,6 +574,9 @@ void Visualizer::visualizeObjectDelta(
             marker.colors.push_back(color);
         }
 
+        // Assumes that all non specified values are 0.0
+        marker.pose.orientation.w = 1.0;
+
         marker.header.stamp = ros::Time::now();
         visualization_marker_pub_.publish(marker);
     }
@@ -584,6 +603,9 @@ void Visualizer::visualizeTranslation(
         marker.points.push_back(end);
         marker.colors.push_back(color);
         marker.colors.push_back(color);
+
+        // Assumes that all non specified values are 0.0
+        marker.pose.orientation.w = 1.0;
 
         marker.header.stamp = ros::Time::now();
         visualization_marker_pub_.publish(marker);
@@ -655,6 +677,9 @@ void Visualizer::visualizeLines(
             marker.colors.push_back(color);
         }
 
+        // Assumes that all non specified values are 0.0
+        marker.pose.orientation.w = 1.0;
+
         marker.header.stamp = ros::Time::now();
         visualization_marker_pub_.publish(marker);
     }
@@ -680,6 +705,9 @@ void Visualizer::visualizeLineStrip(
 
         marker.points = EigenHelpersConversions::VectorEigenVector3dToVectorGeometryPoint(point_sequence);
         marker.colors = std::vector<std_msgs::ColorRGBA>(marker.points.size(), color);
+
+        // Assumes that all non specified values are 0.0
+        marker.pose.orientation.w = 1.0;
 
         marker.header.stamp = ros::Time::now();
         visualization_marker_pub_.publish(marker);
