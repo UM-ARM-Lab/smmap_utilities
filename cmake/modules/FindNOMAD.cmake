@@ -17,8 +17,8 @@ set(NOMAD_INCLUDE_DIRS "${NOMAD_INCLUDE_DIR};${SGTELIB_INCLUDE_DIR}")
 set(NOMAD_LIBRARIES "${NOMAD_LIBRARY};${SGTELIB_LIBRARY}")
 
 
-message(STATUS "-------------${NOMAD_INCLUDE_DIRS}")
-message(STATUS "-------------${NOMAD_LIBRARIES}")
+#message(STATUS "-------------${NOMAD_INCLUDE_DIRS}")
+#message(STATUS "-------------${NOMAD_LIBRARIES}")
 
 # use c++ headers as default
 # set(NOMAD_COMPILER_FLAGS "-DIL_STD" CACHE STRING "NOMAD Compiler Flags")

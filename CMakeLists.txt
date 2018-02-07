@@ -8,11 +8,6 @@ set(CATKIN_PACKAGES
     deformable_manipulation_experiment_params
 )
 
-    # actionlib
-    # kinematics_toolbox
-    # sdf_tools
-    # deformable_manipulation_msgs
-
 ## Add our local cmake modules to the list that can be found
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake/modules")
 
@@ -39,6 +34,7 @@ catkin_package(
     DEPENDS         Eigen3
                     GUROBI
                     NOMAD
+                    PYTHON
 
 )
 
@@ -73,5 +69,5 @@ add_library(${PROJECT_NAME}
     ${h_SRC}
     ${cpp_SRC})
 add_dependencies(${PROJECT_NAME} ${catkin_EXPORTED_TARGETS})
-target_link_libraries(${PROJECT_NAME} ${catkin_LIBRARIES} ${GUROBI_LIBRARIES} ${NOMAD_LIBRARIES})
+target_link_libraries(${PROJECT_NAME} ${catkin_LIBRARIES} ${GUROBI_LIBRARIES} ${NOMAD_LIBRARIES} ${PYTHON_LIBRARIES})
 

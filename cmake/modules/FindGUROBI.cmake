@@ -17,8 +17,8 @@ set(GUROBI_INCLUDE_DIRS "${GUROBI_INCLUDE_DIR}")
 set(GUROBI_LIBRARIES "${GUROBI_CXX_LIBRARY};${GUROBI_LIBRARY}")
 
 
-message(STATUS "-------------${GUROBI_INCLUDE_DIRS}")
-message(STATUS "-------------${GUROBI_LIBRARIES}")
+#message(STATUS "-------------${GUROBI_INCLUDE_DIRS}")
+#message(STATUS "-------------${GUROBI_LIBRARIES}")
 
 # use c++ headers as default
 # set(GUROBI_COMPILER_FLAGS "-DIL_STD" CACHE STRING "Gurobi Compiler Flags")
