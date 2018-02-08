@@ -213,63 +213,74 @@ Eigen::VectorXd smmap_utilities::minSquaredNormSE3VelocityConstraints(
     try
     {
         const ssize_t num_vars = A.cols();
-        assert(num_vars % 6 == 0);
         // Make sure that we are still within reasonable limits
         assert(num_vars < (ssize_t)(std::numeric_limits<int>::max()));
-
-        const std::vector<double> lb(num_vars, -max_se3_velocity);
-        const std::vector<double> ub(num_vars, max_se3_velocity);
+        // Verify that the input data is of the correct size
+        assert(num_vars % 6 == 0);
+        assert(A.rows() == b.rows());
+        assert(weights.rows() == b.rows());
 
         // TODO: Find a way to put a scoped lock here
         gurobi_env_construct_mtx.lock();
         GRBEnv env;
         gurobi_env_construct_mtx.unlock();
 
-        // disables logging to file and logging to console
+        // Disables logging to file and logging to console (with a 0 as the value of the flag)
         env.set(GRB_IntParam_OutputFlag, 0);
-
         GRBModel model(env);
-        vars = model.addVars(lb.data(), ub.data(), nullptr, nullptr, nullptr, (int)num_vars);
-        model.update();
+
+        // Add the vars to the model
+        {
+            const std::vector<double> lb(num_vars, -max_se3_velocity);
+            const std::vector<double> ub(num_vars, max_se3_velocity);
+            vars = model.addVars(lb.data(), ub.data(), nullptr, nullptr, nullptr, (int)num_vars);
+            model.update();
+        }
 
         // Add the SE3 velocity constraints
-        for (ssize_t i = 0; i < num_vars / 6; ++i)
         {
-            model.addQConstr(normSquared(&vars[i * 6], 6), GRB_LESS_EQUAL, max_se3_velocity * max_se3_velocity);
+            for (ssize_t i = 0; i < num_vars / 6; ++i)
+            {
+                model.addQConstr(normSquared(&vars[i * 6], 6), GRB_LESS_EQUAL, max_se3_velocity * max_se3_velocity);
+            }
+            model.update();
         }
 
-
-
-        // Build up the matrix expressions
-        // min || A x - b ||^2_W is the same as min x^T A^T W A x - 2 b^T W A x = x^T Q x + L x
-        Eigen::MatrixXd Q = A.transpose() * weights.asDiagonal() * A;
-        const double min_eigenvalue = Q.selfadjointView<Upper>().eigenvalues().minCoeff();
-        if (min_eigenvalue < 1.1e-4)
+        // Build the objective function
         {
-            Q += Eigen::MatrixXd::Identity(num_vars, num_vars) * (1.400001e-4 - min_eigenvalue);
+            // Build up the matrix expressions
+            // min || A x - b ||^2_W is the same as min x^T A^T W A x - 2 b^T W A x = x^T Q x + L x
+            Eigen::MatrixXd Q = A.transpose() * weights.asDiagonal() * A;
+            const double min_eigenvalue = Q.selfadjointView<Upper>().eigenvalues().minCoeff();
+            if (min_eigenvalue < 1.1e-4)
+            {
+                Q += Eigen::MatrixXd::Identity(num_vars, num_vars) * (1.400001e-4 - min_eigenvalue);
+            }
+
+            const Eigen::RowVectorXd L = -2.0 * b.transpose() * weights.asDiagonal() * A;
+
+            GRBQuadExpr objective_fn = buildQuadraticTerm(vars, vars, Q);
+            objective_fn.addTerms(L.data(), vars, (int)num_vars);
+            model.setObjective(objective_fn, GRB_MINIMIZE);
+            model.update();
         }
-
-        const Eigen::RowVectorXd L = -2.0 * b.transpose() * weights.asDiagonal() * A;
-
-        GRBQuadExpr objective_fn = buildQuadraticTerm(vars, vars, Q);
-        objective_fn.addTerms(L.data(), vars, (int)num_vars);
-        model.setObjective(objective_fn, GRB_MINIMIZE);
-        model.update();
 
         // Find the optimal solution and extract it
-        model.optimize();
-        if (model.get(GRB_IntAttr_Status) == GRB_OPTIMAL)
         {
-            x.resize(num_vars);
-            for (ssize_t var_ind = 0; var_ind < num_vars; var_ind++)
+            model.optimize();
+            if (model.get(GRB_IntAttr_Status) == GRB_OPTIMAL)
             {
-                x(var_ind) = vars[var_ind].get(GRB_DoubleAttr_X);
+                x.resize(num_vars);
+                for (ssize_t var_ind = 0; var_ind < num_vars; var_ind++)
+                {
+                    x(var_ind) = vars[var_ind].get(GRB_DoubleAttr_X);
+                }
             }
-        }
-        else
-        {
-            std::cout << "Status: " << model.get(GRB_IntAttr_Status) << std::endl;
-            exit(-1);
+            else
+            {
+                std::cout << "Status: " << model.get(GRB_IntAttr_Status) << std::endl;
+                exit(-1);
+            }
         }
     }
     catch(GRBException& e)
@@ -301,73 +312,86 @@ EigenHelpers::VectorVector3d smmap_utilities::denoiseWithDistanceConstraints(
     try
     {
         const ssize_t num_vectors = (ssize_t)observations.size();
-        assert(observation_strength.cols() == num_vectors);
-        assert(distance_sq_constraints.rows() == num_vectors);
-        assert(distance_sq_constraints.cols() == num_vectors);
-
         const ssize_t num_vars = 3 * num_vectors;
         // Make sure that we are still within reasonable limits
         assert(num_vars < (ssize_t)(std::numeric_limits<int>::max()));
+        // Verify that all the input data is of the correct size
+        assert(observation_strength.rows() == num_vectors);
+        assert(distance_sq_constraints.rows() == num_vectors);
+        assert(distance_sq_constraints.cols() == num_vectors);
 
         // TODO: Find a way to put a scoped lock here
         gurobi_env_construct_mtx.lock();
         GRBEnv env;
         gurobi_env_construct_mtx.unlock();
 
-        // disables logging to file and logging to console
+        // Disables logging to file and logging to console (with a 0 as the value of the flag)
         env.set(GRB_IntParam_OutputFlag, 0);
         GRBModel model(env);
-        vars = model.addVars((int)num_vars, GRB_CONTINUOUS);
-        model.update();
+
+        // Add the vars to the model
+        {
+            const std::vector<double> lb(num_vars, -100.0);
+            const std::vector<double> ub(num_vars, 100.0);
+            vars = model.addVars(lb.data(), ub.data(), nullptr, nullptr, nullptr, (int)num_vars);
+            model.update();
+        }
 
         // Add the distance constraints
-        Matrix<double, 6, 6> Q = Matrix<double, 6, 6>::Identity();
-        Q.bottomLeftCorner<3, 3>() = -Matrix3d::Identity();
-        Q.topRightCorner<3, 3>() = -Matrix3d::Identity();
-        for (ssize_t i = 0; i < num_vectors; ++i)
         {
-            for (ssize_t j = 0; j < num_vectors; ++j)
+            Matrix<double, 6, 6> Q = Matrix<double, 6, 6>::Identity();
+            Q.bottomLeftCorner<3, 3>() = -Matrix3d::Identity();
+            Q.topRightCorner<3, 3>() = -Matrix3d::Identity();
+            for (ssize_t i = 0; i < num_vectors; ++i)
             {
-                if (i != j)
+                for (ssize_t j = i + 1; j < num_vectors; ++j)
                 {
-                    model.addQConstr(
-                                buildQuadraticTerm(&vars[i * 3], &vars[i * 3], Q),
-                                GRB_LESS_EQUAL,
-                                distance_sq_constraints(i, j));
+                    {
+                        model.addQConstr(
+                                    buildQuadraticTerm(&vars[i * 3], &vars[i * 3], Q),
+                                    GRB_LESS_EQUAL,
+                                    distance_sq_constraints(i, j),
+                                    "distance_sq_" + std::to_string(i) + std::to_string(j));
+                    }
                 }
             }
+            model.update();
         }
 
-        // TODO: this is naive, and could be done faster
         // Build the objective function
-        // min w * || x - z ||^2 is the same as min w x^T x - 2 w z^T x = x^T Q x + L x
-        GRBQuadExpr objective_fn;
-        for (ssize_t i = 0; i < num_vectors; ++i)
         {
-            const Eigen::Matrix3d Q = observation_strength(i) * Eigen::Matrix3d::Identity();
-            const Eigen::Vector3d L = - 2.0 * observation_strength(i) * observations[i];
-            objective_fn += buildQuadraticTerm(&vars[i * 3], &vars[i * 3], Q);
-            objective_fn.addTerms(L.data(), &vars[i * 3], 3);
+            // TODO: this is naive, and could be done faster
+            // min w * || x - z ||^2 is the same as min w x^T x - 2 w z^T x = x^T Q x + L x
+            GRBQuadExpr objective_fn;
+            for (ssize_t i = 0; i < num_vectors; ++i)
+            {
+                const Eigen::Matrix3d Q = observation_strength(i) * Eigen::Matrix3d::Identity();
+                const Eigen::Vector3d L = - 2.0 * observation_strength(i) * observations[i];
+                objective_fn += buildQuadraticTerm(&vars[i * 3], &vars[i * 3], Q);
+                objective_fn.addTerms(L.data(), &vars[i * 3], 3);
+            }
+            model.setObjective(objective_fn, GRB_MINIMIZE);
+            model.update();
         }
-        model.setObjective(objective_fn, GRB_MINIMIZE);
-        model.update();
 
         // Find the optimal solution, and extract it
-        model.optimize();
-        if (model.get(GRB_IntAttr_Status) == GRB_OPTIMAL)
         {
-            x.resize(num_vectors);
-            for (ssize_t i = 0; i < num_vars; i++)
+            model.optimize();
+            if (model.get(GRB_IntAttr_Status) == GRB_OPTIMAL)
             {
-                x[i](0) = vars[i * 3 + 0].get(GRB_DoubleAttr_X);
-                x[i](1) = vars[i * 3 + 1].get(GRB_DoubleAttr_X);
-                x[i](2) = vars[i * 3 + 2].get(GRB_DoubleAttr_X);
+                x.resize(num_vectors);
+                for (ssize_t i = 0; i < num_vectors; i++)
+                {
+                    x[i](0) = vars[i * 3 + 0].get(GRB_DoubleAttr_X);
+                    x[i](1) = vars[i * 3 + 1].get(GRB_DoubleAttr_X);
+                    x[i](2) = vars[i * 3 + 2].get(GRB_DoubleAttr_X);
+                }
             }
-        }
-        else
-        {
-            std::cout << "Status: " << model.get(GRB_IntAttr_Status) << std::endl;
-            exit(-1);
+            else
+            {
+                std::cout << "Status: " << model.get(GRB_IntAttr_Status) << std::endl;
+                exit(-1);
+            }
         }
 
     }
