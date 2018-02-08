@@ -251,10 +251,13 @@ Eigen::VectorXd smmap_utilities::minSquaredNormSE3VelocityConstraints(
             // Build up the matrix expressions
             // min || A x - b ||^2_W is the same as min x^T A^T W A x - 2 b^T W A x = x^T Q x + L x
             Eigen::MatrixXd Q = A.transpose() * weights.asDiagonal() * A;
+            // Gurobi requires a minimum eigenvalue for the problem, so if the given problem does
+            // not have sufficient eigenvalues, make them have such
             const double min_eigenvalue = Q.selfadjointView<Upper>().eigenvalues().minCoeff();
-            if (min_eigenvalue < 1.1e-4)
+            if (min_eigenvalue <= 1.1e-4)
             {
                 Q += Eigen::MatrixXd::Identity(num_vars, num_vars) * (1.400001e-4 - min_eigenvalue);
+                std::cout << "Poorly conditioned matrix for Gurobi, adding conditioning." << std::endl;
             }
 
             const Eigen::RowVectorXd L = -2.0 * b.transpose() * weights.asDiagonal() * A;
