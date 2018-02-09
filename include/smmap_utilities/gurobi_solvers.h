@@ -26,7 +26,8 @@ namespace smmap_utilities
     EigenHelpers::VectorVector3d denoiseWithDistanceConstraints(
             const EigenHelpers::VectorVector3d& observations,
             const Eigen::VectorXd& observation_strength,
-            const Eigen::MatrixXd& distance_sq_constraints);
+            const Eigen::MatrixXd& distance_sq_constraints,
+            const double variable_bound = 1000.0);
 }
 
 #endif // GUROBI_SOLVERS_H

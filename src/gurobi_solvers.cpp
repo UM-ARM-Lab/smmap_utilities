@@ -301,14 +301,17 @@ Eigen::VectorXd smmap_utilities::minSquaredNormSE3VelocityConstraints(
 }
 
 
-// Minimizes sum (obs_strength(i) * ||x(i) - obxervation(i)||
-// subject to      distance_scale * ||x(i) - x(j)||^2 < distance(i,j)^2
+// Minimizes sum { obs_strength(i) * ||x(i) - obxervation(i)|| }
+// subject to      distance_scale * ||x(i) - x(j)||^2 <= distance(i,j)^2 for all i,j
 //
 // This is custom designed for R^3 distances, but it could be done generically
+//
+// Variable bound is an extra contraint on each individual variable (not vector), it defines the upper and lower bound
 EigenHelpers::VectorVector3d smmap_utilities::denoiseWithDistanceConstraints(
         const EigenHelpers::VectorVector3d& observations,
         const Eigen::VectorXd& observation_strength,
-        const Eigen::MatrixXd& distance_sq_constraints)
+        const Eigen::MatrixXd& distance_sq_constraints,
+        const double variable_bound)
 {
     VectorVector3d x;
     GRBVar* vars = nullptr;
@@ -334,24 +337,25 @@ EigenHelpers::VectorVector3d smmap_utilities::denoiseWithDistanceConstraints(
 
         // Add the vars to the model
         {
-            const std::vector<double> lb(num_vars, -100.0);
-            const std::vector<double> ub(num_vars, 100.0);
+            // Note that variable bound is important, without a bound, Gurobi defaults to 0, which is clearly unwanted
+            const std::vector<double> lb(num_vars, -variable_bound);
+            const std::vector<double> ub(num_vars, variable_bound);
             vars = model.addVars(lb.data(), ub.data(), nullptr, nullptr, nullptr, (int)num_vars);
             model.update();
         }
 
         // Add the distance constraints
         {
-            Matrix<double, 6, 6> Q = Matrix<double, 6, 6>::Identity();
-            Q.bottomLeftCorner<3, 3>() = -Matrix3d::Identity();
-            Q.topRightCorner<3, 3>() = -Matrix3d::Identity();
+            Matrix<double, 6, 6> differencing_matrix = Matrix<double, 6, 6>::Identity();
+            differencing_matrix.bottomLeftCorner<3, 3>() = -Matrix3d::Identity();
+            differencing_matrix.topRightCorner<3, 3>() = -Matrix3d::Identity();
             for (ssize_t i = 0; i < num_vectors; ++i)
             {
                 for (ssize_t j = i + 1; j < num_vectors; ++j)
                 {
                     {
                         model.addQConstr(
-                                    buildQuadraticTerm(&vars[i * 3], &vars[i * 3], Q),
+                                    buildQuadraticTerm(&vars[i * 3], &vars[i * 3], differencing_matrix),
                                     GRB_LESS_EQUAL,
                                     distance_sq_constraints(i, j),
                                     "distance_sq_" + std::to_string(i) + std::to_string(j));
@@ -363,11 +367,11 @@ EigenHelpers::VectorVector3d smmap_utilities::denoiseWithDistanceConstraints(
 
         // Build the objective function
         {
-            // TODO: this is naive, and could be done faster
-            // min w * || x - z ||^2 is the same as min w x^T x - 2 w z^T x = x^T Q x + L x
+            // TODO: building this function icrementally is naive, and could be done faster
             GRBQuadExpr objective_fn;
             for (ssize_t i = 0; i < num_vectors; ++i)
             {
+                // min w * || x - z ||^2 is the same as min w x^T x - 2 w z^T x = x^T Q x + L x
                 const Eigen::Matrix3d Q = observation_strength(i) * Eigen::Matrix3d::Identity();
                 const Eigen::Vector3d L = - 2.0 * observation_strength(i) * observations[i];
                 objective_fn += buildQuadraticTerm(&vars[i * 3], &vars[i * 3], Q);
