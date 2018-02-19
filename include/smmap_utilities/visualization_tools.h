@@ -29,6 +29,8 @@ namespace smmap_utilities
             static std_msgs::ColorRGBA Orange(const float alpha = 1.0f);
 
         public:
+            typedef std::shared_ptr<Visualizer> Ptr;
+
             Visualizer(ros::NodeHandle& nh, ros::NodeHandle& ph);
 
             Visualizer(
@@ -38,7 +40,7 @@ namespace smmap_utilities
 
             void publish(const visualization_msgs::Marker& marker) const;
 
-            void clearVisualizationsBullet() const;
+            void clearVisualizationsBullet();
 
             void deleteObjects(
                     const std::string& marker_name,
@@ -169,8 +171,12 @@ namespace smmap_utilities
                     const int32_t id = 1) const;
 
         private:
+
+            ros::NodeHandle& nh_;
+            ros::NodeHandle& ph_;
+
             const bool disable_all_visualizations_;
-            mutable ros::ServiceClient clear_markers_srv_;
+            ros::ServiceClient clear_markers_srv_;
             ros::Publisher visualization_marker_pub_;
 
             // Data needed to properly create visualizations and markers

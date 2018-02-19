@@ -202,13 +202,14 @@ Visualizer::Visualizer(
         ros::NodeHandle& nh,
         ros::NodeHandle& ph,
         const std::string& marker_topic)
-    : disable_all_visualizations_(smmap::GetDisableAllVisualizations(ph))
-    , clear_markers_srv_(nh.serviceClient<std_srvs::Empty>(smmap::GetClearVisualizationsTopic(nh), true))
+    : nh_(nh)
+    , ph_(ph)
+    , disable_all_visualizations_(smmap::GetDisableAllVisualizations(ph_))
+    , clear_markers_srv_(nh.serviceClient<std_srvs::Empty>(smmap::GetClearVisualizationsTopic(nh_), true))
     , world_frame_name_(smmap::GetWorldFrameName())
-    , gripper_apperture_(smmap::GetGripperApperture(nh))
+    , gripper_apperture_(smmap::GetGripperApperture(nh_))
 {
     InitializeStandardColors();
-
     if (!disable_all_visualizations_)
     {
         clear_markers_srv_.waitForExistence();
@@ -221,12 +222,11 @@ void Visualizer::publish(const visualization_msgs::Marker& marker) const
     visualization_marker_pub_.publish(marker);
 }
 
-void Visualizer::clearVisualizationsBullet() const
+void Visualizer::clearVisualizationsBullet()
 {
     if (!disable_all_visualizations_)
     {
         std_srvs::Empty srv_data;
-
         if (!clear_markers_srv_.call(srv_data))
         {
             ROS_ERROR_NAMED("visualizer", "Unable to clear visualization data");
@@ -394,6 +394,7 @@ void Visualizer::visualizeSpheres(
             marker.pose.orientation.z = 0.0;
             marker.pose.orientation.w = 1.0;
             marker.color = colors[idx];
+
             visualization_marker_pub_.publish(marker);
 
             if (idx % 100 == 0)
