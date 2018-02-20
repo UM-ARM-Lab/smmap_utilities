@@ -84,43 +84,79 @@ std::vector<GRBLinExpr> buildVectorOfExperssions(const MatrixXd& A, GRBVar* vars
     return exprs;
 }
 
-VectorXd smmap_utilities::minSquaredNorm(const MatrixXd& A, const VectorXd& b, const double max_x_norm)
+// Minimizes || Ax - b || subject to norm constraints on x
+VectorXd smmap_utilities::minSquaredNorm(
+        const MatrixXd& A,
+        const VectorXd& b,
+        const double max_x_norm)
 {
     VectorXd x;
     GRBVar* vars = nullptr;
     try
     {
         const ssize_t num_vars = A.cols();
-        const std::vector<double> lb(num_vars, -max_x_norm);
-        const std::vector<double> ub(num_vars, max_x_norm);
 
         // TODO: Find a way to put a scoped lock here
         gurobi_env_construct_mtx.lock();
         GRBEnv env;
         gurobi_env_construct_mtx.unlock();
 
+        // Disables logging to file and logging to console (with a 0 as the value of the flag)
         env.set(GRB_IntParam_OutputFlag, 0);
         GRBModel model(env);
-        vars = model.addVars(lb.data(), ub.data(), nullptr, nullptr, nullptr, (int)num_vars);
-        model.update();
 
-        model.addQConstr(normSquared(vars, num_vars), GRB_LESS_EQUAL, max_x_norm * max_x_norm);
-        model.setObjective(normSquared(buildVectorOfExperssions(A, vars, b)), GRB_MINIMIZE);
-        model.update();
-        model.optimize();
-
-        if (model.get(GRB_IntAttr_Status) == GRB_OPTIMAL)
+        // Add the vars to the model
         {
-            x.resize(num_vars);
-            for (ssize_t var_ind = 0; var_ind < num_vars; var_ind++)
-            {
-                x(var_ind) = vars[var_ind].get(GRB_DoubleAttr_X);
-            }
+            const std::vector<double> lb(num_vars, -max_x_norm);
+            const std::vector<double> ub(num_vars, max_x_norm);
+            vars = model.addVars(lb.data(), ub.data(), nullptr, nullptr, nullptr, (int)num_vars);
+            model.update();
         }
-        else
+
+        // Add the x norm constraint
         {
-            std::cout << "Status: " << model.get(GRB_IntAttr_Status) << std::endl;
-            exit(-1);
+            model.addQConstr(normSquared(vars, num_vars), GRB_LESS_EQUAL, max_x_norm * max_x_norm);
+            model.update();
+        }
+
+        // Build the objective function
+        {
+            // Build up the matrix expressions
+            // min || A x - b ||^2 is the same as min x^T A^T A x - 2 b^T A x = x^T Q x + L x
+            Eigen::MatrixXd Q = A.transpose() * A;
+            // Gurobi requires a minimum eigenvalue for the problem, so if the given problem does
+            // not have sufficient eigenvalues, make them have such
+            const double min_eigenvalue = Q.selfadjointView<Upper>().eigenvalues().minCoeff();
+            if (min_eigenvalue <= 1.1e-4)
+            {
+                Q += Eigen::MatrixXd::Identity(num_vars, num_vars) * (1.400001e-4 - min_eigenvalue);
+                std::cout << "Poorly conditioned matrix for Gurobi, adding conditioning." << std::endl;
+            }
+
+            const Eigen::RowVectorXd L = -2.0 * b.transpose() * A;
+
+            GRBQuadExpr objective_fn = buildQuadraticTerm(vars, vars, Q);
+            objective_fn.addTerms(L.data(), vars, (int)num_vars);
+            model.setObjective(objective_fn, GRB_MINIMIZE);
+        }
+
+        // Find the optimal solution and extract it
+        {
+            model.optimize();
+            if (model.get(GRB_IntAttr_Status) == GRB_OPTIMAL)
+            {
+                x.resize(num_vars);
+                for (ssize_t var_ind = 0; var_ind < num_vars; var_ind++)
+                {
+                    x(var_ind) = vars[var_ind].get(GRB_DoubleAttr_X);
+                }
+            }
+            else
+            {
+                std::cout << "Status: " << model.get(GRB_IntAttr_Status) << std::endl;
+                exit(-1);
+            }
+
         }
     }
     catch(GRBException& e)
@@ -137,54 +173,80 @@ VectorXd smmap_utilities::minSquaredNorm(const MatrixXd& A, const VectorXd& b, c
     return x;
 }
 
-VectorXd smmap_utilities::minSquaredNorm(const MatrixXd& A, const VectorXd& b, const double max_x_norm, const VectorXd& weights)
+// Minimizes || Ax - b ||_w subject to norm constraints on x
+VectorXd smmap_utilities::minSquaredNorm(
+        const MatrixXd& A,
+        const VectorXd& b,
+        const double max_x_norm,
+        const VectorXd& weights)
 {
     VectorXd x;
     GRBVar* vars = nullptr;
     try
     {
         const ssize_t num_vars = A.cols();
-        const std::vector<double> lb(num_vars, -max_x_norm);
-        const std::vector<double> ub(num_vars, max_x_norm);
 
         // TODO: Find a way to put a scoped lock here
         gurobi_env_construct_mtx.lock();
         GRBEnv env;
         gurobi_env_construct_mtx.unlock();
 
+        // Disables logging to file and logging to console (with a 0 as the value of the flag)
         env.set(GRB_IntParam_OutputFlag, 0);
         GRBModel model(env);
-        vars = model.addVars(lb.data(), ub.data(), nullptr, nullptr, nullptr, (int)num_vars);
-        model.update();
 
-        model.addQConstr(normSquared(vars, num_vars), GRB_LESS_EQUAL, max_x_norm * max_x_norm);
-
-        GRBQuadExpr objective_fn = normSquared(buildVectorOfExperssions(A, vars, b), weights);
-        // Check if we need to add anything extra to the main diagonal.
-        const VectorXd eigenvalues = (A.transpose() * weights.asDiagonal() * A).selfadjointView<Upper>().eigenvalues();
-        if ((eigenvalues.array() < 1.1e-4).any())
+        // Add the vars to the model
         {
-//            const std::vector<double> diagonal(num_vars, 1.1e-4 - eigenvalues.minCoeff());
-            const std::vector<double> diagonal(num_vars, 1.1e-4);
-            objective_fn.addTerms(diagonal.data(), vars, vars, (int)num_vars);
+            const std::vector<double> lb(num_vars, -max_x_norm);
+            const std::vector<double> ub(num_vars, max_x_norm);
+            vars = model.addVars(lb.data(), ub.data(), nullptr, nullptr, nullptr, (int)num_vars);
+            model.update();
         }
-        model.setObjective(objective_fn, GRB_MINIMIZE);
 
-        model.update();
-        model.optimize();
-
-        if (model.get(GRB_IntAttr_Status) == GRB_OPTIMAL)
+        // Add the x norm constraint
         {
-            x.resize(num_vars);
-            for (ssize_t var_ind = 0; var_ind < num_vars; var_ind++)
+            model.addQConstr(normSquared(vars, num_vars), GRB_LESS_EQUAL, max_x_norm * max_x_norm);
+            model.update();
+        }
+
+        // Build the objective function
+        {
+            // Build up the matrix expressions
+            // min || A x - b ||^2_w is the same as min x^T A^T diag(w) A x - 2 b^T * diag(w) * A x = x^T Q x + L x
+            Eigen::MatrixXd Q = A.transpose() * weights.asDiagonal() * A;
+            // Gurobi requires a minimum eigenvalue for the problem, so if the given problem does
+            // not have sufficient eigenvalues, make them have such
+            const double min_eigenvalue = Q.selfadjointView<Upper>().eigenvalues().minCoeff();
+            if (min_eigenvalue <= 1.1e-4)
             {
-                x(var_ind) = vars[var_ind].get(GRB_DoubleAttr_X);
+                Q += Eigen::MatrixXd::Identity(num_vars, num_vars) * (1.400001e-4 - min_eigenvalue);
+                std::cout << "Poorly conditioned matrix for Gurobi, adding conditioning." << std::endl;
             }
+
+            const Eigen::RowVectorXd L = -2.0 * b.transpose() * weights.asDiagonal() * A;
+
+            GRBQuadExpr objective_fn = buildQuadraticTerm(vars, vars, Q);
+            objective_fn.addTerms(L.data(), vars, (int)num_vars);
+            model.setObjective(objective_fn, GRB_MINIMIZE);
         }
-        else
+
+        // Find the optimal solution and extract it
         {
-            std::cout << "Status: " << model.get(GRB_IntAttr_Status) << std::endl;
-            exit(-1);
+            model.optimize();
+            if (model.get(GRB_IntAttr_Status) == GRB_OPTIMAL)
+            {
+                x.resize(num_vars);
+                for (ssize_t var_ind = 0; var_ind < num_vars; var_ind++)
+                {
+                    x(var_ind) = vars[var_ind].get(GRB_DoubleAttr_X);
+                }
+            }
+            else
+            {
+                std::cout << "Status: " << model.get(GRB_IntAttr_Status) << std::endl;
+                exit(-1);
+            }
+
         }
     }
     catch(GRBException& e)
@@ -201,7 +263,114 @@ VectorXd smmap_utilities::minSquaredNorm(const MatrixXd& A, const VectorXd& b, c
     return x;
 }
 
-// Minimizes || Ax - b || subject to SE3 velocity constraints on x
+
+// Minimizes || Ax - b ||_w subject to norm constraints on x, and linear constraints.
+// Linear constraint terms are of the form C * x <= d
+Eigen::VectorXd smmap_utilities::minSquaredNorm(
+        const Eigen::MatrixXd& A,
+        const Eigen::VectorXd& b,
+        const double max_x_norm,
+        const Eigen::VectorXd& weights,
+        const std::vector<Eigen::RowVectorXd>& linear_constraint_linear_terms,
+        const std::vector<double>& linear_constraint_affine_terms)
+{
+    VectorXd x;
+    GRBVar* vars = nullptr;
+    try
+    {
+        const ssize_t num_vars = A.cols();
+
+        // TODO: Find a way to put a scoped lock here
+        gurobi_env_construct_mtx.lock();
+        GRBEnv env;
+        gurobi_env_construct_mtx.unlock();
+
+        // Disables logging to file and logging to console (with a 0 as the value of the flag)
+        env.set(GRB_IntParam_OutputFlag, 0);
+        GRBModel model(env);
+
+        // Add the vars to the model
+        {
+            const std::vector<double> lb(num_vars, -max_x_norm);
+            const std::vector<double> ub(num_vars, max_x_norm);
+            vars = model.addVars(lb.data(), ub.data(), nullptr, nullptr, nullptr, (int)num_vars);
+            model.update();
+        }
+
+        // Add the x norm constraint
+        {
+            model.addQConstr(normSquared(vars, num_vars), GRB_LESS_EQUAL, max_x_norm * max_x_norm);
+            model.update();
+        }
+
+        // Add the linear constraint terms
+        {
+            assert(linear_constraint_linear_terms.size() == linear_constraint_affine_terms.size());
+            const size_t num_linear_constraints = linear_constraint_linear_terms.size();
+            for (size_t ind = 0; ind < num_linear_constraints; ++ind)
+            {
+                GRBLinExpr expr(0.0);
+                expr.addTerms(linear_constraint_linear_terms[ind].data(), vars, (int)num_vars);
+                model.addConstr(expr <= linear_constraint_affine_terms[ind]);
+            }
+            model.update();
+        }
+
+        // Build the objective function
+        {
+            // Build up the matrix expressions
+            // min || A x - b ||^2_w is the same as min x^T A^T diag(w) A x - 2 b^T * diag(w) * A x = x^T Q x + L x
+            Eigen::MatrixXd Q = A.transpose() * weights.asDiagonal() * A;
+            // Gurobi requires a minimum eigenvalue for the problem, so if the given problem does
+            // not have sufficient eigenvalues, make them have such
+            const double min_eigenvalue = Q.selfadjointView<Upper>().eigenvalues().minCoeff();
+            if (min_eigenvalue <= 1.1e-4)
+            {
+                Q += Eigen::MatrixXd::Identity(num_vars, num_vars) * (1.400001e-4 - min_eigenvalue);
+                std::cout << "Poorly conditioned matrix for Gurobi, adding conditioning." << std::endl;
+            }
+
+            const Eigen::RowVectorXd L = -2.0 * b.transpose() * weights.asDiagonal() * A;
+
+            GRBQuadExpr objective_fn = buildQuadraticTerm(vars, vars, Q);
+            objective_fn.addTerms(L.data(), vars, (int)num_vars);
+            model.setObjective(objective_fn, GRB_MINIMIZE);
+        }
+
+        // Find the optimal solution and extract it
+        {
+            model.optimize();
+            if (model.get(GRB_IntAttr_Status) == GRB_OPTIMAL)
+            {
+                x.resize(num_vars);
+                for (ssize_t var_ind = 0; var_ind < num_vars; var_ind++)
+                {
+                    x(var_ind) = vars[var_ind].get(GRB_DoubleAttr_X);
+                }
+            }
+            else
+            {
+                std::cout << "Status: " << model.get(GRB_IntAttr_Status) << std::endl;
+                exit(-1);
+            }
+
+        }
+    }
+    catch(GRBException& e)
+    {
+        std::cout << "Error code = " << e.getErrorCode() << std::endl;
+        std::cout << e.getMessage() << std::endl;
+    }
+    catch(...)
+    {
+        std::cout << "Exception during optimization" << std::endl;
+    }
+
+    delete[] vars;
+    return x;
+}
+
+// Minimizes || Ax - b ||_w subject to SE3 velocity constraints on x
 Eigen::VectorXd smmap_utilities::minSquaredNormSE3VelocityConstraints(
         const Eigen::MatrixXd& A,
         const Eigen::VectorXd& b,
