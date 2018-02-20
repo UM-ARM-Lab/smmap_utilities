@@ -17,7 +17,8 @@ namespace smmap_utilities
             const double max_x_norm,
             const Eigen::VectorXd& weights);
 
-    Eigen::VectorXd minSquaredNorm(const Eigen::MatrixXd& A,
+    Eigen::VectorXd minSquaredNormLinearConstraints(
+            const Eigen::MatrixXd& A,
             const Eigen::VectorXd& b,
             const double max_x_norm,
             const Eigen::VectorXd& weights,

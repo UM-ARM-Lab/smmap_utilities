@@ -11,7 +11,7 @@ using namespace EigenHelpers;
 static std::mutex gurobi_env_construct_mtx;
 
 // TODO: this loop is highly inefficient, this ought to be doable in a better way
-GRBQuadExpr buildQuadraticTerm(GRBVar* left_vars, GRBVar* right_vars, const Eigen::MatrixXd& Q)
+GRBQuadExpr buildQuadraticTerm(GRBVar* left_vars, GRBVar* right_vars, const MatrixXd& Q)
 {
     GRBQuadExpr expr;
 
@@ -123,17 +123,17 @@ VectorXd smmap_utilities::minSquaredNorm(
         {
             // Build up the matrix expressions
             // min || A x - b ||^2 is the same as min x^T A^T A x - 2 b^T A x = x^T Q x + L x
-            Eigen::MatrixXd Q = A.transpose() * A;
+            MatrixXd Q = A.transpose() * A;
             // Gurobi requires a minimum eigenvalue for the problem, so if the given problem does
             // not have sufficient eigenvalues, make them have such
             const double min_eigenvalue = Q.selfadjointView<Upper>().eigenvalues().minCoeff();
             if (min_eigenvalue <= 1.1e-4)
             {
-                Q += Eigen::MatrixXd::Identity(num_vars, num_vars) * (1.400001e-4 - min_eigenvalue);
+                Q += MatrixXd::Identity(num_vars, num_vars) * (1.400001e-4 - min_eigenvalue);
                 std::cout << "Poorly conditioned matrix for Gurobi, adding conditioning." << std::endl;
             }
 
-            const Eigen::RowVectorXd L = -2.0 * b.transpose() * A;
+            const RowVectorXd L = -2.0 * b.transpose() * A;
 
             GRBQuadExpr objective_fn = buildQuadraticTerm(vars, vars, Q);
             objective_fn.addTerms(L.data(), vars, (int)num_vars);
@@ -213,17 +213,17 @@ VectorXd smmap_utilities::minSquaredNorm(
         {
             // Build up the matrix expressions
             // min || A x - b ||^2_w is the same as min x^T A^T diag(w) A x - 2 b^T * diag(w) * A x = x^T Q x + L x
-            Eigen::MatrixXd Q = A.transpose() * weights.asDiagonal() * A;
+            MatrixXd Q = A.transpose() * weights.asDiagonal() * A;
             // Gurobi requires a minimum eigenvalue for the problem, so if the given problem does
             // not have sufficient eigenvalues, make them have such
             const double min_eigenvalue = Q.selfadjointView<Upper>().eigenvalues().minCoeff();
             if (min_eigenvalue <= 1.1e-4)
             {
-                Q += Eigen::MatrixXd::Identity(num_vars, num_vars) * (1.400001e-4 - min_eigenvalue);
+                Q += MatrixXd::Identity(num_vars, num_vars) * (1.400001e-4 - min_eigenvalue);
                 std::cout << "Poorly conditioned matrix for Gurobi, adding conditioning." << std::endl;
             }
 
-            const Eigen::RowVectorXd L = -2.0 * b.transpose() * weights.asDiagonal() * A;
+            const RowVectorXd L = -2.0 * b.transpose() * weights.asDiagonal() * A;
 
             GRBQuadExpr objective_fn = buildQuadraticTerm(vars, vars, Q);
             objective_fn.addTerms(L.data(), vars, (int)num_vars);
@@ -266,12 +266,12 @@ VectorXd smmap_utilities::minSquaredNorm(
 
 // Minimizes || Ax - b ||_w subject to norm constraints on x, and linear constraints.
 // Linear constraint terms are of the form C * x <= d
-Eigen::VectorXd smmap_utilities::minSquaredNorm(
-        const Eigen::MatrixXd& A,
-        const Eigen::VectorXd& b,
+VectorXd smmap_utilities::minSquaredNormLinearConstraints(
+        const MatrixXd& A,
+        const VectorXd& b,
         const double max_x_norm,
-        const Eigen::VectorXd& weights,
-        const std::vector<Eigen::RowVectorXd>& linear_constraint_linear_terms,
+        const VectorXd& weights,
+        const std::vector<RowVectorXd>& linear_constraint_linear_terms,
         const std::vector<double>& linear_constraint_affine_terms)
 {
     VectorXd x;
@@ -309,6 +309,7 @@ Eigen::VectorXd smmap_utilities::minSquaredNorm(
             const size_t num_linear_constraints = linear_constraint_linear_terms.size();
             for (size_t ind = 0; ind < num_linear_constraints; ++ind)
             {
+                assert(linear_constraint_linear_terms[ind].size() == num_vars);
                 GRBLinExpr expr(0.0);
                 expr.addTerms(linear_constraint_linear_terms[ind].data(), vars, (int)num_vars);
                 model.addConstr(expr <= linear_constraint_affine_terms[ind]);
@@ -320,17 +321,17 @@ Eigen::VectorXd smmap_utilities::minSquaredNorm(
         {
             // Build up the matrix expressions
             // min || A x - b ||^2_w is the same as min x^T A^T diag(w) A x - 2 b^T * diag(w) * A x = x^T Q x + L x
-            Eigen::MatrixXd Q = A.transpose() * weights.asDiagonal() * A;
+            MatrixXd Q = A.transpose() * weights.asDiagonal() * A;
             // Gurobi requires a minimum eigenvalue for the problem, so if the given problem does
             // not have sufficient eigenvalues, make them have such
             const double min_eigenvalue = Q.selfadjointView<Upper>().eigenvalues().minCoeff();
             if (min_eigenvalue <= 1.1e-4)
             {
-                Q += Eigen::MatrixXd::Identity(num_vars, num_vars) * (1.400001e-4 - min_eigenvalue);
+                Q += MatrixXd::Identity(num_vars, num_vars) * (1.400001e-4 - min_eigenvalue);
                 std::cout << "Poorly conditioned matrix for Gurobi, adding conditioning." << std::endl;
             }
 
-            const Eigen::RowVectorXd L = -2.0 * b.transpose() * weights.asDiagonal() * A;
+            const RowVectorXd L = -2.0 * b.transpose() * weights.asDiagonal() * A;
 
             GRBQuadExpr objective_fn = buildQuadraticTerm(vars, vars, Q);
             objective_fn.addTerms(L.data(), vars, (int)num_vars);
@@ -371,11 +372,11 @@ Eigen::VectorXd smmap_utilities::minSquaredNorm(
 }
 
 // Minimizes || Ax - b ||_w subject to SE3 velocity constraints on x
-Eigen::VectorXd smmap_utilities::minSquaredNormSE3VelocityConstraints(
-        const Eigen::MatrixXd& A,
-        const Eigen::VectorXd& b,
+VectorXd smmap_utilities::minSquaredNormSE3VelocityConstraints(
+        const MatrixXd& A,
+        const VectorXd& b,
         const double max_se3_velocity,
-        const Eigen::VectorXd& weights)
+        const VectorXd& weights)
 {
     VectorXd x;
     GRBVar* vars = nullptr;
@@ -419,17 +420,17 @@ Eigen::VectorXd smmap_utilities::minSquaredNormSE3VelocityConstraints(
         {
             // Build up the matrix expressions
             // min || A x - b ||^2_W is the same as min x^T A^T W A x - 2 b^T W A x = x^T Q x + L x
-            Eigen::MatrixXd Q = A.transpose() * weights.asDiagonal() * A;
+            MatrixXd Q = A.transpose() * weights.asDiagonal() * A;
             // Gurobi requires a minimum eigenvalue for the problem, so if the given problem does
             // not have sufficient eigenvalues, make them have such
             const double min_eigenvalue = Q.selfadjointView<Upper>().eigenvalues().minCoeff();
             if (min_eigenvalue <= 1.1e-4)
             {
-                Q += Eigen::MatrixXd::Identity(num_vars, num_vars) * (1.400001e-4 - min_eigenvalue);
+                Q += MatrixXd::Identity(num_vars, num_vars) * (1.400001e-4 - min_eigenvalue);
                 std::cout << "Poorly conditioned matrix for Gurobi, adding conditioning." << std::endl;
             }
 
-            const Eigen::RowVectorXd L = -2.0 * b.transpose() * weights.asDiagonal() * A;
+            const RowVectorXd L = -2.0 * b.transpose() * weights.asDiagonal() * A;
 
             GRBQuadExpr objective_fn = buildQuadraticTerm(vars, vars, Q);
             objective_fn.addTerms(L.data(), vars, (int)num_vars);
@@ -476,10 +477,10 @@ Eigen::VectorXd smmap_utilities::minSquaredNormSE3VelocityConstraints(
 // This is custom designed for R^3 distances, but it could be done generically
 //
 // Variable bound is an extra contraint on each individual variable (not vector), it defines the upper and lower bound
-EigenHelpers::VectorVector3d smmap_utilities::denoiseWithDistanceConstraints(
-        const EigenHelpers::VectorVector3d& observations,
-        const Eigen::VectorXd& observation_strength,
-        const Eigen::MatrixXd& distance_sq_constraints,
+VectorVector3d smmap_utilities::denoiseWithDistanceConstraints(
+        const VectorVector3d& observations,
+        const VectorXd& observation_strength,
+        const MatrixXd& distance_sq_constraints,
         const double variable_bound)
 {
     VectorVector3d x;
@@ -541,8 +542,8 @@ EigenHelpers::VectorVector3d smmap_utilities::denoiseWithDistanceConstraints(
             for (ssize_t i = 0; i < num_vectors; ++i)
             {
                 // min w * || x - z ||^2 is the same as min w x^T x - 2 w z^T x = x^T Q x + L x
-                const Eigen::Matrix3d Q = observation_strength(i) * Eigen::Matrix3d::Identity();
-                const Eigen::Vector3d L = - 2.0 * observation_strength(i) * observations[i];
+                const Matrix3d Q = observation_strength(i) * Matrix3d::Identity();
+                const Vector3d L = - 2.0 * observation_strength(i) * observations[i];
                 objective_fn += buildQuadraticTerm(&vars[i * 3], &vars[i * 3], Q);
                 objective_fn.addTerms(L.data(), &vars[i * 3], 3);
             }
