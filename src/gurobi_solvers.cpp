@@ -8,6 +8,10 @@
 using namespace Eigen;
 using namespace EigenHelpers;
 
+////////////////////////////////////////////////////////////////
+// Internally used functions and static objects
+////////////////////////////////////////////////////////////////
+
 static std::mutex gurobi_env_construct_mtx;
 
 // TODO: this loop is highly inefficient, this ought to be doable in a better way
@@ -83,6 +87,10 @@ std::vector<GRBLinExpr> buildVectorOfExperssions(const MatrixXd& A, GRBVar* vars
 
     return exprs;
 }
+
+////////////////////////////////////////////////////////////////
+// Externally accessed functions
+////////////////////////////////////////////////////////////////
 
 // Minimizes || Ax - b || subject to norm constraints on x
 VectorXd smmap_utilities::minSquaredNorm(
@@ -262,7 +270,6 @@ VectorXd smmap_utilities::minSquaredNorm(
     delete[] vars;
     return x;
 }
-
 
 // Minimizes || Ax - b ||_w subject to norm constraints on x, and linear constraints.
 // Linear constraint terms are of the form C * x <= d
@@ -469,7 +476,6 @@ VectorXd smmap_utilities::minSquaredNormSE3VelocityConstraints(
     delete[] vars;
     return x;
 }
-
 
 // Minimizes sum { obs_strength(i) * ||x(i) - obxervation(i)|| }
 // subject to      distance_scale * ||x(i) - x(j)||^2 <= distance(i,j)^2 for all i,j
