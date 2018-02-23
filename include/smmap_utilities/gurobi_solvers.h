@@ -23,7 +23,9 @@ namespace smmap_utilities
             const double max_x_norm,
             const Eigen::VectorXd& weights,
             const std::vector<Eigen::RowVectorXd>& linear_constraint_linear_terms,
-            const std::vector<double>& linear_constraint_affine_terms);
+            const std::vector<double>& linear_constraint_affine_terms,
+            const Eigen::VectorXd& x_lower_bound = Eigen::VectorXd(0),
+            const Eigen::VectorXd& x_upper_bound = Eigen::VectorXd(0));
 
     Eigen::VectorXd minSquaredNormSE3VelocityConstraints(
             const Eigen::MatrixXd& A,

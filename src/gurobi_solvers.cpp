@@ -273,13 +273,17 @@ VectorXd smmap_utilities::minSquaredNorm(
 
 // Minimizes || Ax - b ||_w subject to norm constraints on x, and linear constraints.
 // Linear constraint terms are of the form C * x <= d
+//
+// If lower bound is passed, upper bound must also be passed.
 VectorXd smmap_utilities::minSquaredNormLinearConstraints(
         const MatrixXd& A,
         const VectorXd& b,
         const double max_x_norm,
         const VectorXd& weights,
         const std::vector<RowVectorXd>& linear_constraint_linear_terms,
-        const std::vector<double>& linear_constraint_affine_terms)
+        const std::vector<double>& linear_constraint_affine_terms,
+        const VectorXd& x_lower_bound,
+        const VectorXd& x_upper_bound)
 {
     VectorXd x;
     GRBVar* vars = nullptr;
@@ -298,9 +302,18 @@ VectorXd smmap_utilities::minSquaredNormLinearConstraints(
 
         // Add the vars to the model
         {
-            const std::vector<double> lb(num_vars, -max_x_norm);
-            const std::vector<double> ub(num_vars, max_x_norm);
-            vars = model.addVars(lb.data(), ub.data(), nullptr, nullptr, nullptr, (int)num_vars);
+            if (x_lower_bound.size() > 0)
+            {
+                assert(x_lower_bound.size() == num_vars);
+                assert(x_lower_bound.size() == x_upper_bound.size());
+                vars = model.addVars(x_lower_bound.data(), x_upper_bound.data(), nullptr, nullptr, nullptr, (int)num_vars);
+            }
+            else
+            {
+                const std::vector<double> lb(num_vars, -max_x_norm);
+                const std::vector<double> ub(num_vars, max_x_norm);
+                vars = model.addVars(lb.data(), ub.data(), nullptr, nullptr, nullptr, (int)num_vars);
+            }
             model.update();
         }
 
