@@ -30,6 +30,26 @@ GRBQuadExpr buildQuadraticTerm(GRBVar* left_vars, GRBVar* right_vars, const Matr
     return expr;
 }
 
+// Builds the quadratic term ||point_a - point_b||^2
+// This is equivalent to [point_a' point_b'] * Q * [point_a' point_b']'
+// where Q is [ I, -I
+//             -I,  I]
+GRBQuadExpr buildDifferencingQuadraticTerm(GRBVar* point_a, GRBVar* point_b, const size_t num_vars_per_point)
+{
+    GRBQuadExpr expr;
+
+    // Build the main diagonal
+    const std::vector<double> main_diag(num_vars_per_point, 1.0);
+    expr.addTerms(main_diag.data(), point_a, point_a, (int)num_vars_per_point);
+    expr.addTerms(main_diag.data(), point_b, point_b, (int)num_vars_per_point);
+
+    // Build the off diagonal - use -2 instead of -1 because the off diagonal terms are the same
+    const std::vector<double> off_diagonal(num_vars_per_point, -2.0);
+    expr.addTerms(off_diagonal.data(), point_a, point_b, (int)num_vars_per_point);
+
+    return expr;
+}
+
 GRBQuadExpr normSquared(const std::vector<GRBLinExpr>& exprs)
 {
     GRBQuadExpr vector_norm_squared = 0;
@@ -535,20 +555,15 @@ VectorVector3d smmap_utilities::denoiseWithDistanceConstraints(
 
         // Add the distance constraints
         {
-            Matrix<double, 6, 6> differencing_matrix = Matrix<double, 6, 6>::Identity();
-            differencing_matrix.bottomLeftCorner<3, 3>() = -Matrix3d::Identity();
-            differencing_matrix.topRightCorner<3, 3>() = -Matrix3d::Identity();
             for (ssize_t i = 0; i < num_vectors; ++i)
             {
                 for (ssize_t j = i + 1; j < num_vectors; ++j)
                 {
-                    {
-                        model.addQConstr(
-                                    buildQuadraticTerm(&vars[i * 3], &vars[i * 3], differencing_matrix),
-                                    GRB_LESS_EQUAL,
-                                    distance_sq_constraints(i, j),
-                                    "distance_sq_" + std::to_string(i) + std::to_string(j));
-                    }
+                    model.addQConstr(
+                                buildDifferencingQuadraticTerm(&vars[i * 3], &vars[j * 3], 3),
+                                GRB_LESS_EQUAL,
+                                distance_sq_constraints(i, j),
+                                "distance_sq_" + std::to_string(i) + std::to_string(j));
                 }
             }
             model.update();
@@ -589,7 +604,6 @@ VectorVector3d smmap_utilities::denoiseWithDistanceConstraints(
                 exit(-1);
             }
         }
-
     }
     catch(GRBException& e)
     {
