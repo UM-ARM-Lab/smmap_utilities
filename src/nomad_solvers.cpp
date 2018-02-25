@@ -157,10 +157,17 @@ namespace smmap_utilities
         // Convert NOMAD points into
         const Eigen::VectorXd test_robot_motion = evalPointToRobotDOFDelta(x);
 
+        std::cout << "\ntest motion: " << test_robot_motion.transpose() << std::endl;
+
         NOMAD::Double c1_error_cost = eval_error_cost_fn_(test_robot_motion);
         NOMAD::Double c2_collision_constraint = collision_constraint_fn_(test_robot_motion);
         NOMAD::Double c3_stretching_constraint = stretching_constraint_fn_(test_robot_motion);
         NOMAD::Double c4_robot_motion_constraint = robot_motion_constraint_fn_(test_robot_motion);
+
+        std::cout << "Cost:                    " << c1_error_cost.value() << std::endl;
+        std::cout << "collision constraint:    " << c2_collision_constraint.value() << std::endl;
+        std::cout << "Stretching constraint:   " << c3_stretching_constraint.value() << std::endl;
+        std::cout << "Robot motion constraint: " << c4_robot_motion_constraint.value() << std::endl;
 
         // objective value
         x.set_bb_output(0, c1_error_cost);
