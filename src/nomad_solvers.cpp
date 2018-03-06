@@ -384,8 +384,8 @@ namespace smmap_utilities
     {
         if (&x == nullptr)
         {
-            std::cerr << "   ---------  No output from NOMAD evaluator ------------" << std::endl;
-            assert(false);
+            std::cerr << "   ---------  No output from NOMAD evaluator ------------, setting motion to zero" << std::endl;
+            return AllGrippersSinglePoseDelta(num_grippers_, kinematics::Vector6d::Zero());
         }
 
         const int single_gripper_dimension = 6;

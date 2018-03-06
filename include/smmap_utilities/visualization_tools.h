@@ -172,8 +172,8 @@ namespace smmap_utilities
 
         private:
 
-            ros::NodeHandle& nh_;
-            ros::NodeHandle& ph_;
+            ros::NodeHandle nh_;
+            ros::NodeHandle ph_;
 
             const bool disable_all_visualizations_;
             ros::ServiceClient clear_markers_srv_;
