@@ -394,7 +394,6 @@ VectorXd smmap_utilities::minSquaredNormLinearConstraints(
                 std::cout << "Status: " << model.get(GRB_IntAttr_Status) << std::endl;
                 exit(-1);
             }
-
         }
     }
     catch(GRBException& e)
@@ -616,5 +615,231 @@ VectorVector3d smmap_utilities::denoiseWithDistanceConstraints(
     }
 
     delete[] vars;
+    return x;
+}
+
+
+// Designed to find a feasbible point for problems of the form:
+// Minimize     f(x)
+// subject to   linear * x + affine <= 0
+//              lb <= x
+//                    x <= ub
+//              || x || <= max_norm
+//
+// Returns the x that minimizes constraint violations, and the minimim constraint violation itself
+std::pair<Eigen::VectorXd, double> smmap_utilities::minimizeConstraintViolations(
+        const ssize_t num_vars,
+        const std::vector<Eigen::RowVectorXd>& linear_constraint_linear_terms,
+        const std::vector<double>& linear_constraint_affine_terms,
+        const double max_x_norm,
+        const Eigen::VectorXd& x_lower_bound,
+        const Eigen::VectorXd& x_upper_bound,
+        const double constraint_lower_bound,
+        const double constraint_upper_bound)
+{
+    VectorXd x;
+    double c_vio = std::numeric_limits<double>::quiet_NaN();
+    GRBVar* x_vars = nullptr;
+    GRBVar c_violation_var;
+    try
+    {
+        // TODO: Find a way to put a scoped lock here
+        gurobi_env_construct_mtx.lock();
+        GRBEnv env;
+        gurobi_env_construct_mtx.unlock();
+
+        // Disables logging to file and logging to console (with a 0 as the value of the flag)
+        env.set(GRB_IntParam_OutputFlag, 1);
+        GRBModel model(env);
+
+        // Add the vars to the model
+        {
+            if (x_lower_bound.size() > 0)
+            {
+                assert(x_lower_bound.size() == num_vars);
+                assert(x_lower_bound.size() == x_upper_bound.size());
+                x_vars = model.addVars(x_lower_bound.data(), x_upper_bound.data(), nullptr, nullptr, nullptr, (int)num_vars);
+            }
+            else
+            {
+                const std::vector<double> lb(num_vars, -max_x_norm);
+                const std::vector<double> ub(num_vars, max_x_norm);
+                x_vars = model.addVars(lb.data(), ub.data(), nullptr, nullptr, nullptr, (int)num_vars);
+            }
+            const double coeff = 1.0;
+            c_violation_var = model.addVar(constraint_lower_bound, constraint_upper_bound, coeff, GRB_CONTINUOUS);
+
+            model.update();
+        }
+
+        // Add the x norm constraint
+        {
+            GRBQuadExpr constr;
+            constr += x_vars[0] * x_vars[0];
+            constr += x_vars[1] * x_vars[1];
+            constr += x_vars[2] * x_vars[2];
+            constr += x_vars[3] * x_vars[3] / 400.0;
+            constr += x_vars[4] * x_vars[4] / 400.0;
+            constr += x_vars[5] * x_vars[5] / 400.0;
+            model.addQConstr(constr <= max_x_norm * max_x_norm);
+            model.update();
+        }
+
+        // Add the linear constraint terms
+        {
+            assert(linear_constraint_linear_terms.size() == linear_constraint_affine_terms.size());
+            const size_t num_linear_constraints = linear_constraint_linear_terms.size();
+            for (size_t ind = 0; ind < num_linear_constraints; ++ind)
+            {
+                assert(linear_constraint_linear_terms[ind].size() == num_vars);
+                GRBLinExpr lhs(0.0);
+                lhs.addTerms(linear_constraint_linear_terms[ind].data(), x_vars, (int)num_vars);
+                model.addConstr(lhs + linear_constraint_affine_terms[ind] <= c_violation_var);
+            }
+        }
+
+        // No need to add an objective, it's already set when we created c_violation_var
+//        std::cout << "Objective: " << model.getObjective() << std::endl;
+//        std::cout << model << std::endl;
+//        model.write("/home/dmcconac/test.lp");
+
+        // Find the optimal solution and extract it
+        {
+            model.optimize();
+            if (model.get(GRB_IntAttr_Status) == GRB_OPTIMAL)
+            {
+                x.resize(num_vars);
+                for (ssize_t var_ind = 0; var_ind < num_vars; var_ind++)
+                {
+                    x(var_ind) = x_vars[var_ind].get(GRB_DoubleAttr_X);
+                }
+                c_vio = c_violation_var.get(GRB_DoubleAttr_X);
+            }
+            else
+            {
+                std::cout << "Status: " << model.get(GRB_IntAttr_Status) << std::endl;
+                exit(-1);
+            }
+        }
+    }
+    catch(GRBException& e)
+    {
+        std::cout << "Error code = " << e.getErrorCode() << std::endl;
+        std::cout << e.getMessage() << std::endl;
+    }
+    catch(...)
+    {
+        std::cout << "Exception during optimization" << std::endl;
+    }
+
+    delete[] x_vars;
+    return {x, c_vio};
+}
+
+
+// Designed to find a feasbible point for problems of the form:
+// Minimize     || x - starting_point ||
+// subject to   linear * x + affine <= 0
+//              lb <= x
+//                    x <= ub
+//              || x || <= max_norm
+Eigen::VectorXd smmap_utilities::findClosestValidPoint(
+        const Eigen::VectorXd& starting_point,
+        const std::vector<Eigen::RowVectorXd>& linear_constraint_linear_terms,
+        const std::vector<double>& linear_constraint_affine_terms,
+        const double max_x_norm,
+        const Eigen::VectorXd& x_lower_bound,
+        const Eigen::VectorXd& x_upper_bound)
+{
+    VectorXd x;
+    GRBVar* x_vars = nullptr;
+    try
+    {
+        const ssize_t num_vars = starting_point.size();
+
+        // TODO: Find a way to put a scoped lock here
+        gurobi_env_construct_mtx.lock();
+        GRBEnv env;
+        gurobi_env_construct_mtx.unlock();
+
+        // Disables logging to file and logging to console (with a 0 as the value of the flag)
+        env.set(GRB_IntParam_OutputFlag, 0);
+        GRBModel model(env);
+
+        // Add the vars to the model
+        {
+            if (x_lower_bound.size() > 0)
+            {
+                assert(x_lower_bound.size() == num_vars);
+                assert(x_lower_bound.size() == x_upper_bound.size());
+                x_vars = model.addVars(x_lower_bound.data(), x_upper_bound.data(), nullptr, nullptr, nullptr, (int)num_vars);
+            }
+            else
+            {
+                const std::vector<double> lb(num_vars, -max_x_norm);
+                const std::vector<double> ub(num_vars, max_x_norm);
+                x_vars = model.addVars(lb.data(), ub.data(), nullptr, nullptr, nullptr, (int)num_vars);
+            }
+            model.update();
+        }
+
+        // Add the x norm constraint
+        {
+            model.addQConstr(normSquared(x_vars, num_vars), GRB_LESS_EQUAL, max_x_norm * max_x_norm);
+            model.update();
+        }
+
+        // Add the linear constraint terms
+        {
+            assert(linear_constraint_linear_terms.size() == linear_constraint_affine_terms.size());
+            const size_t num_linear_constraints = linear_constraint_linear_terms.size();
+            for (size_t ind = 0; ind < num_linear_constraints; ++ind)
+            {
+                assert(linear_constraint_linear_terms[ind].size() == num_vars);
+                GRBLinExpr lhs = 0.0;
+                lhs.addTerms(linear_constraint_linear_terms[ind].data(), x_vars, (int)num_vars);
+                model.addConstr(lhs + linear_constraint_affine_terms[ind] <= 0.0);
+            }
+        }
+
+        // Build the objective function
+        {
+            GRBQuadExpr objective_fn = 0;
+            for (ssize_t ind = 0; ind < num_vars; ++ind)
+            {
+                objective_fn += (x_vars[ind] - starting_point(ind)) * (x_vars[ind] - starting_point(ind));
+            }
+            model.setObjective(objective_fn, GRB_MINIMIZE);
+        }
+
+        // Find the optimal solution and extract it
+        {
+            model.optimize();
+            if (model.get(GRB_IntAttr_Status) == GRB_OPTIMAL)
+            {
+                x.resize(num_vars);
+                for (ssize_t var_ind = 0; var_ind < num_vars; var_ind++)
+                {
+                    x(var_ind) = x_vars[var_ind].get(GRB_DoubleAttr_X);
+                }
+            }
+            else
+            {
+                std::cout << "Optimal solution not found" << std::endl;
+                std::cout << "Status: " << model.get(GRB_IntAttr_Status) << std::endl;
+            }
+        }
+    }
+    catch(GRBException& e)
+    {
+        std::cout << "Error code = " << e.getErrorCode() << std::endl;
+        std::cout << e.getMessage() << std::endl;
+    }
+    catch(...)
+    {
+        std::cout << "Exception during optimization" << std::endl;
+    }
+
+    delete[] x_vars;
     return x;
 }
