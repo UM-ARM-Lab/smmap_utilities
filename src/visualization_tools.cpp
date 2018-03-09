@@ -442,13 +442,16 @@ void Visualizer::visualizeRope(
         marker.pose.orientation.w = 1.0;
 
         marker.header.stamp = ros::Time::now();
-        visualization_marker_pub_.publish(marker);
+//        visualization_marker_pub_.publish(marker);
 
-        marker.type = visualization_msgs::Marker::SPHERE;
-        marker.id = id + 1;
-        marker.scale.x = 0.015;
-        marker.scale.y = 0.015;
-        marker.scale.z = 0.015;
+        marker.type = visualization_msgs::Marker::POINTS;
+//        marker.type = visualization_msgs::Marker::SPHERE;
+//        marker.id = id + 1;
+//        const double scale = 0.015;
+        const double scale = 0.005;
+        marker.scale.x = scale;
+        marker.scale.y = scale;
+        marker.scale.z = scale;
 
         // Assumes that all non specified values are 0.0
         marker.pose.orientation.w = 1.0;
