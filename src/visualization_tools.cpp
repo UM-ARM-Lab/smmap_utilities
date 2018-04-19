@@ -313,7 +313,7 @@ void Visualizer::visualizeCubes(
         const std::string& marker_name,
         const EigenHelpers::VectorVector3d& points,
         const Eigen::Vector3d& scale,
-        const std_msgs::ColorRGBA& color,
+        const std::vector<std_msgs::ColorRGBA>& colors,
         const int32_t id) const
 {
     if (!disable_all_visualizations_)
@@ -327,7 +327,7 @@ void Visualizer::visualizeCubes(
         marker.id = id;
         marker.scale = EigenHelpersConversions::EigenVector3dToGeometryVector3(scale);
         marker.points = EigenHelpersConversions::VectorEigenVector3dToVectorGeometryPoint(points);
-        marker.color = color;
+        marker.colors = colors;
 
         // Assumes that all non specified values are 0.0
         marker.pose.orientation.w = 1.0;
@@ -337,15 +337,32 @@ void Visualizer::visualizeCubes(
     }
 }
 
+void Visualizer::visualizeCubes(
+        const std::string& marker_name,
+        const EigenHelpers::VectorVector3d& points,
+        const Eigen::Vector3d& scale,
+        const std_msgs::ColorRGBA& color,
+        const int32_t id) const
+{
+    if (!disable_all_visualizations_)
+    {
+        const std::vector<std_msgs::ColorRGBA> colors(points.size(), color);
+        visualizeCubes(marker_name, points, scale, colors, id);
+    }
+}
+
 void Visualizer::visualizeSpheres(const std::string& marker_name,
         const EigenHelpers::VectorVector3d& points,
         const std_msgs::ColorRGBA& color,
         const int32_t starting_id,
         const double& radius) const
 {
-    const std::vector<std_msgs::ColorRGBA> colors(points.size(), color);
-    const std::vector<double> radiuses(points.size(), radius);
-    visualizeSpheres(marker_name, points, colors, starting_id, radiuses);
+    if (!disable_all_visualizations_)
+    {
+        const std::vector<std_msgs::ColorRGBA> colors(points.size(), color);
+        const std::vector<double> radiuses(points.size(), radius);
+        visualizeSpheres(marker_name, points, colors, starting_id, radiuses);
+    }
 }
 
 void Visualizer::visualizeSpheres(

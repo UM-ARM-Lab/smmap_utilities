@@ -65,6 +65,13 @@ namespace smmap_utilities
                     const std::string& marker_name,
                     const EigenHelpers::VectorVector3d& points,
                     const Eigen::Vector3d& scale,
+                    const std::vector<std_msgs::ColorRGBA>& colors,
+                    const int32_t id = 1) const;
+
+            void visualizeCubes(
+                    const std::string& marker_name,
+                    const EigenHelpers::VectorVector3d& points,
+                    const Eigen::Vector3d& scale,
                     const std_msgs::ColorRGBA& color,
                     const int32_t id = 1) const;
 
