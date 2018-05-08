@@ -207,11 +207,11 @@ Visualizer::Visualizer(
         clear_markers_srv_.waitForExistence();
         visualization_marker_pub_ = nh.advertise<visualization_msgs::Marker>(smmap::GetVisualizationMarkerTopic(nh_), 256);
         visualization_maker_array_pub_ = nh.advertise<visualization_msgs::MarkerArray>(smmap::GetVisualizationMarkerArrayTopic(nh_), 1);
-    }
 
-    if (publish_async_)
-    {
-        publish_thread_ = std::thread(&Visualizer::publishAsyncMain, this);
+        if (publish_async_)
+        {
+            publish_thread_ = std::thread(&Visualizer::publishAsyncMain, this);
+        }
     }
 }
 
