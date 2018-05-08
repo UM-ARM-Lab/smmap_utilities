@@ -191,19 +191,11 @@ std_msgs::ColorRGBA Visualizer::Orange(const float alpha)
 
 Visualizer::Visualizer(
         ros::NodeHandle& nh,
-        ros::NodeHandle& ph)
-    : Visualizer(
-          nh,
-          ph,
-          smmap::GetVisualizationMarkerTopic(nh))
-{}
-
-Visualizer::Visualizer(
-        ros::NodeHandle& nh,
         ros::NodeHandle& ph,
-        const std::string& marker_topic)
+        const bool publish_async)
     : nh_(nh)
     , ph_(ph)
+    , publish_async_(publish_async)
     , disable_all_visualizations_(smmap::GetDisableAllVisualizations(ph_))
     , clear_markers_srv_(nh.serviceClient<std_srvs::Empty>(smmap::GetClearVisualizationsTopic(nh_), true))
     , world_frame_name_(smmap::GetWorldFrameName())
@@ -213,13 +205,46 @@ Visualizer::Visualizer(
     if (!disable_all_visualizations_)
     {
         clear_markers_srv_.waitForExistence();
-        visualization_marker_pub_ = nh.advertise<visualization_msgs::Marker>(marker_topic, 256);
+        visualization_marker_pub_ = nh.advertise<visualization_msgs::Marker>(smmap::GetVisualizationMarkerTopic(nh_), 256);
+        visualization_maker_array_pub_ = nh.advertise<visualization_msgs::MarkerArray>(smmap::GetVisualizationMarkerArrayTopic(nh_), 1);
+    }
+
+    if (publish_async_)
+    {
+        publish_thread_ = std::thread(&Visualizer::publishAsyncMain, this);
     }
 }
 
 void Visualizer::publish(const visualization_msgs::Marker& marker) const
 {
-    visualization_marker_pub_.publish(marker);
+    if (!disable_all_visualizations_)
+    {
+        if (publish_async_)
+        {
+            std::lock_guard<std::mutex> lock(markers_mtx_);
+
+            bool marker_found = false;
+            for (size_t idx = 0; idx < async_markers_.markers.size(); ++idx)
+            {
+                visualization_msgs::Marker& old_marker = async_markers_.markers[idx];
+                if (old_marker.id == marker.id && old_marker.ns == marker.ns)
+                {
+                    old_marker = marker;
+                    marker_found = true;
+                    break;
+                }
+            }
+
+            if (!marker_found)
+            {
+                async_markers_.markers.push_back(marker);
+            }
+        }
+        else
+        {
+            visualization_marker_pub_.publish(marker);
+        }
+    }
 }
 
 void Visualizer::clearVisualizationsBullet()
@@ -241,28 +266,72 @@ void Visualizer::deleteObjects(
 {
     if (!disable_all_visualizations_)
     {
-        visualization_msgs::Marker marker;
-
-        marker.header.frame_id = world_frame_name_;
-
-        marker.action = visualization_msgs::Marker::DELETE;
-        marker.ns = marker_name;
-
-        for (int32_t id = start_id; id < end_id; ++id)
+        if (publish_async_)
         {
-            marker.id = id;
-            marker.header.stamp = ros::Time::now();
-            visualization_marker_pub_.publish(marker);
+            std::lock_guard<std::mutex> lock(markers_mtx_);
 
-            if (id % 100 == 0)
+            // Flag any existing markers for deletion
+            std::vector<size_t> markers_to_delete;
+            for (size_t idx = 0; idx < async_markers_.markers.size(); ++idx)
             {
-                ros::spinOnce();
-                std::this_thread::sleep_for(std::chrono::duration<double>(0.001));
+                const visualization_msgs::Marker& marker = async_markers_.markers[idx];
+                if (marker.ns == marker_name &&
+                    start_id <= marker.id &&
+                    marker.id < end_id)
+                {
+                    markers_to_delete.push_back(idx);
+                }
+            }
+
+            // Delete the flaged markers
+            visualization_msgs::MarkerArray new_markers;
+            new_markers.markers.reserve(async_markers_.markers.size() + end_id - start_id);
+            for (size_t idx = 0; idx < async_markers_.markers.size(); ++idx)
+            {
+                const auto itr = std::find(markers_to_delete.begin(), markers_to_delete.end(), idx);
+                if (itr != markers_to_delete.end())
+                {
+                    new_markers.markers.push_back(async_markers_.markers[idx]);
+                }
+            }
+            async_markers_ = new_markers;
+
+            // Add new "DELETE" markers
+            visualization_msgs::Marker marker;
+            marker.action = visualization_msgs::Marker::DELETE;
+            marker.ns = marker_name;
+            for (int32_t id = start_id; id < end_id; ++id)
+            {
+                marker.id = id;
+                marker.header.stamp = ros::Time::now();
+                async_markers_.markers.push_back(marker);
             }
         }
+        else
+        {
+            visualization_msgs::Marker marker;
 
-        ros::spinOnce();
-        std::this_thread::sleep_for(std::chrono::duration<double>(0.001));
+            marker.header.frame_id = world_frame_name_;
+
+            marker.action = visualization_msgs::Marker::DELETE;
+            marker.ns = marker_name;
+
+            for (int32_t id = start_id; id < end_id; ++id)
+            {
+                marker.id = id;
+                marker.header.stamp = ros::Time::now();
+                publish(marker);
+
+                if (id % 100 == 0)
+                {
+                    ros::spinOnce();
+                    std::this_thread::sleep_for(std::chrono::duration<double>(0.001));
+                }
+            }
+
+            ros::spinOnce();
+            std::this_thread::sleep_for(std::chrono::duration<double>(0.001));
+        }
     }
 }
 
@@ -305,7 +374,7 @@ void Visualizer::visualizePoints(
         marker.pose.orientation.w = 1.0;
 
         marker.header.stamp = ros::Time::now();
-        visualization_marker_pub_.publish(marker);
+        publish(marker);
     }
 }
 
@@ -333,7 +402,7 @@ void Visualizer::visualizeCubes(
         marker.pose.orientation.w = 1.0;
 
         marker.header.stamp = ros::Time::now();
-        visualization_marker_pub_.publish(marker);
+        publish(marker);
     }
 }
 
@@ -412,13 +481,7 @@ void Visualizer::visualizeSpheres(
             marker.pose.orientation.w = 1.0;
             marker.color = colors[idx];
 
-            visualization_marker_pub_.publish(marker);
-
-            if (idx % 100 == 0)
-            {
-                ros::spinOnce();
-                std::this_thread::sleep_for(std::chrono::duration<double>(0.001));
-            }
+            publish(marker);
         }
     }
 }
@@ -459,7 +522,7 @@ void Visualizer::visualizeRope(
         marker.pose.orientation.w = 1.0;
 
         marker.header.stamp = ros::Time::now();
-//        visualization_marker_pub_.publish(marker);
+//        publish(marker);
 
         marker.type = visualization_msgs::Marker::POINTS;
 //        marker.type = visualization_msgs::Marker::SPHERE;
@@ -474,7 +537,7 @@ void Visualizer::visualizeRope(
         marker.pose.orientation.w = 1.0;
 
         marker.header.stamp = ros::Time::now();
-        visualization_marker_pub_.publish(marker);
+        publish(marker);
     }
 }
 
@@ -515,7 +578,7 @@ void Visualizer::visualizeCloth(
         marker.pose.orientation.w = 1.0;
 
         marker.header.stamp = ros::Time::now();
-        visualization_marker_pub_.publish(marker);
+        publish(marker);
     }
 }
 
@@ -549,7 +612,7 @@ void Visualizer::visualizeGripper(
         p.z = -gripper_apperture_ * 0.5;
         marker.points.push_back(p);
 
-        visualization_marker_pub_.publish(marker);
+        publish(marker);
     }
 }
 
@@ -599,7 +662,7 @@ void Visualizer::visualizeObjectDelta(
         marker.pose.orientation.w = 1.0;
 
         marker.header.stamp = ros::Time::now();
-        visualization_marker_pub_.publish(marker);
+        publish(marker);
     }
 }
 
@@ -629,7 +692,7 @@ void Visualizer::visualizeTranslation(
         marker.pose.orientation.w = 1.0;
 
         marker.header.stamp = ros::Time::now();
-        visualization_marker_pub_.publish(marker);
+        publish(marker);
     }
 }
 
@@ -702,7 +765,7 @@ void Visualizer::visualizeLines(
         marker.pose.orientation.w = 1.0;
 
         marker.header.stamp = ros::Time::now();
-        visualization_marker_pub_.publish(marker);
+        publish(marker);
     }
 }
 
@@ -731,7 +794,7 @@ void Visualizer::visualizeLineStrip(
         marker.pose.orientation.w = 1.0;
 
         marker.header.stamp = ros::Time::now();
-        visualization_marker_pub_.publish(marker);
+        publish(marker);
     }
 }
 
@@ -744,5 +807,20 @@ void Visualizer::visualizeXYZTrajectory(
     if (!disable_all_visualizations_)
     {
         visualizeLineStrip(marker_name, point_sequence, color, id);
+    }
+}
+
+
+void Visualizer::publishAsyncMain()
+{
+    const double freq = ROSHelpers::GetParam<double>(ph_, "async_publish_frequency", 2.0);
+    ros::Rate rate(freq);
+    while (ros::ok())
+    {
+        {
+            std::lock_guard<std::mutex> lock(markers_mtx_);
+            visualization_maker_array_pub_.publish(async_markers_);
+        }
+        rate.sleep();
     }
 }

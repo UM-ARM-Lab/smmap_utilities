@@ -1,6 +1,9 @@
 #ifndef VISUALIZATION_TOOLS_H
 #define VISUALIZATION_TOOLS_H
 
+#include <thread>
+#include <mutex>
+
 #include <ros/ros.h>
 #include <visualization_msgs/MarkerArray.h>
 #include <deformable_manipulation_experiment_params/ros_params.hpp>
@@ -31,12 +34,10 @@ namespace smmap_utilities
         public:
             typedef std::shared_ptr<Visualizer> Ptr;
 
-            Visualizer(ros::NodeHandle& nh, ros::NodeHandle& ph);
-
             Visualizer(
                     ros::NodeHandle& nh,
                     ros::NodeHandle& ph,
-                    const std::string& marker_topic);
+                    const bool publish_async = false);
 
             void publish(const visualization_msgs::Marker& marker) const;
 
@@ -179,12 +180,20 @@ namespace smmap_utilities
 
         private:
 
+            void publishAsyncMain();
+
             ros::NodeHandle nh_;
             ros::NodeHandle ph_;
+
+            const bool publish_async_;
+            std::thread publish_thread_;
+            mutable std::mutex markers_mtx_;
+            mutable visualization_msgs::MarkerArray async_markers_;
 
             const bool disable_all_visualizations_;
             ros::ServiceClient clear_markers_srv_;
             ros::Publisher visualization_marker_pub_;
+            ros::Publisher visualization_maker_array_pub_;
 
             // Data needed to properly create visualizations and markers
             const std::string world_frame_name_;
