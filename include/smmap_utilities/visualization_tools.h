@@ -43,6 +43,11 @@ namespace smmap_utilities
 
             void clearVisualizationsBullet();
 
+            // Converts all markers in the async publishing list to "delete" actions
+            void deleteAll() const;
+
+            // Publishes markers in namespace marker_name, with ids in the half close range [start_id, end_id)
+            // with the delete flag set
             void deleteObjects(
                     const std::string& marker_name,
                     const int32_t start_id = 0,

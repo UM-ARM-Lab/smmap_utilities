@@ -197,7 +197,7 @@ Visualizer::Visualizer(
     , ph_(ph)
     , publish_async_(publish_async)
     , disable_all_visualizations_(smmap::GetDisableAllVisualizations(ph_))
-    , clear_markers_srv_(nh.serviceClient<std_srvs::Empty>(smmap::GetClearVisualizationsTopic(nh_), true))
+    , clear_markers_srv_(nh_.serviceClient<std_srvs::Empty>(smmap::GetClearVisualizationsTopic(nh_), true))
     , world_frame_name_(smmap::GetWorldFrameName())
     , gripper_apperture_(smmap::GetGripperApperture(nh_))
 {
@@ -217,6 +217,13 @@ Visualizer::Visualizer(
 
 void Visualizer::publish(const visualization_msgs::Marker& marker) const
 {
+    if (marker.header.frame_id != world_frame_name_)
+    {
+        std::cout << "Weirdness in marker frame name:\n"
+                  << marker.header.frame_id
+                  << std::endl << marker.ns << " " << marker.id << std::endl;
+    }
+
     if (!disable_all_visualizations_)
     {
         if (publish_async_)
@@ -252,9 +259,35 @@ void Visualizer::clearVisualizationsBullet()
     if (!disable_all_visualizations_)
     {
         std_srvs::Empty srv_data;
-        if (!clear_markers_srv_.call(srv_data))
+        while (!clear_markers_srv_.call(srv_data))
         {
-            ROS_ERROR_NAMED("visualizer", "Unable to clear visualization data");
+            ROS_WARN_THROTTLE_NAMED(1.0, "visualizer", "Clear visualization data failed, reconnecting");
+            clear_markers_srv_ = nh_.serviceClient<std_srvs::Empty>(smmap::GetClearVisualizationsTopic(nh_), true);
+            clear_markers_srv_.waitForExistence();
+        }
+    }
+}
+
+void Visualizer::deleteAll() const
+{
+    if (!disable_all_visualizations_)
+    {
+        if (publish_async_)
+        {
+            std::lock_guard<std::mutex> lock(markers_mtx_);
+            for (size_t idx = 0; idx < async_markers_.markers.size(); ++idx)
+            {
+                visualization_msgs::Marker& marker = async_markers_.markers[idx];
+                marker.action = visualization_msgs::Marker::DELETE;
+                marker.header.stamp = ros::Time::now();
+                marker.lifetime = ros::DURATION_MIN;
+                marker.points.clear();
+                marker.colors.clear();
+            }
+        }
+        else
+        {
+            ROS_WARN_THROTTLE(1.0, "Visualizer::deleteAll() called when publishing synchronously; no marker data is stored in this mode, so no markers will be deleted. Use Visualizer::deleteObjects(...) to specify which objects to delete.");
         }
     }
 }
@@ -266,6 +299,12 @@ void Visualizer::deleteObjects(
 {
     if (!disable_all_visualizations_)
     {
+        visualization_msgs::Marker marker;
+        marker.header.frame_id = world_frame_name_;
+        marker.action = visualization_msgs::Marker::DELETE;
+        marker.ns = marker_name;
+        marker.lifetime = ros::DURATION_MIN;
+
         if (publish_async_)
         {
             std::lock_guard<std::mutex> lock(markers_mtx_);
@@ -297,9 +336,6 @@ void Visualizer::deleteObjects(
             async_markers_ = new_markers;
 
             // Add new "DELETE" markers
-            visualization_msgs::Marker marker;
-            marker.action = visualization_msgs::Marker::DELETE;
-            marker.ns = marker_name;
             for (int32_t id = start_id; id < end_id; ++id)
             {
                 marker.id = id;
@@ -309,13 +345,6 @@ void Visualizer::deleteObjects(
         }
         else
         {
-            visualization_msgs::Marker marker;
-
-            marker.header.frame_id = world_frame_name_;
-
-            marker.action = visualization_msgs::Marker::DELETE;
-            marker.ns = marker_name;
-
             for (int32_t id = start_id; id < end_id; ++id)
             {
                 marker.id = id;
@@ -813,7 +842,7 @@ void Visualizer::visualizeXYZTrajectory(
 
 void Visualizer::publishAsyncMain()
 {
-    const double freq = ROSHelpers::GetParam<double>(ph_, "async_publish_frequency", 2.0);
+    const double freq = ROSHelpers::GetParam<double>(ph_, "async_publish_frequency", 100.0);
     ros::Rate rate(freq);
     while (ros::ok())
     {
