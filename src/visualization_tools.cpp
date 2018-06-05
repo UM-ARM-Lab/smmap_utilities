@@ -217,13 +217,6 @@ Visualizer::Visualizer(
 
 void Visualizer::publish(const visualization_msgs::Marker& marker) const
 {
-    if (marker.header.frame_id != world_frame_name_)
-    {
-        std::cout << "Weirdness in marker frame name:\n"
-                  << marker.header.frame_id
-                  << std::endl << marker.ns << " " << marker.id << std::endl;
-    }
-
     if (!disable_all_visualizations_)
     {
         if (publish_async_)
@@ -251,6 +244,35 @@ void Visualizer::publish(const visualization_msgs::Marker& marker) const
         {
             visualization_marker_pub_.publish(marker);
         }
+    }
+}
+
+void Visualizer::forcePublishNow() const
+{
+    if (!disable_all_visualizations_)
+    {
+        if (publish_async_)
+        {
+            std::lock_guard<std::mutex> lock(markers_mtx_);
+            visualization_maker_array_pub_.publish(async_markers_);
+            visualization_maker_array_pub_.publish(async_markers_);
+            visualization_maker_array_pub_.publish(async_markers_);
+            arc_helpers::Sleep(0.01);
+            visualization_maker_array_pub_.publish(async_markers_);
+            visualization_maker_array_pub_.publish(async_markers_);
+            visualization_maker_array_pub_.publish(async_markers_);
+            arc_helpers::Sleep(0.01);
+
+            ros::spinOnce();
+
+            arc_helpers::Sleep(0.01);
+        }
+        else
+        {
+            ROS_WARN_THROTTLE_NAMED(1.0, "visualizer", "forcePublishNow() does nothing if async publishing is not enabled.");
+        }
+
+        purgeMarkerList();
     }
 }
 
@@ -287,7 +309,23 @@ void Visualizer::deleteAll() const
         }
         else
         {
-            ROS_WARN_THROTTLE(1.0, "Visualizer::deleteAll() called when publishing synchronously; no marker data is stored in this mode, so no markers will be deleted. Use Visualizer::deleteObjects(...) to specify which objects to delete.");
+            ROS_WARN_THROTTLE_NAMED(1.0, "visualizer", "Visualizer::deleteAll() called when publishing synchronously; no marker data is stored in this mode, so no markers will be deleted. Use Visualizer::deleteObjects(...) to specify which objects to delete.");
+        }
+    }
+}
+
+void Visualizer::purgeMarkerList() const
+{
+    if (!disable_all_visualizations_)
+    {
+        if (publish_async_)
+        {
+            std::lock_guard<std::mutex> lock(markers_mtx_);
+            async_markers_.markers.clear();
+        }
+        else
+        {
+            ROS_WARN_THROTTLE_NAMED(1.0, "visualizer", "purgeMarkerList() does nothing if async publishing is not enabled.");
         }
     }
 }

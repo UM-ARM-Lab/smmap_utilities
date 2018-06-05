@@ -41,7 +41,11 @@ namespace smmap_utilities
 
             void publish(const visualization_msgs::Marker& marker) const;
 
+            void forcePublishNow() const;
+
             void clearVisualizationsBullet();
+
+            void purgeMarkerList() const;
 
             // Converts all markers in the async publishing list to "delete" actions
             void deleteAll() const;
