@@ -257,22 +257,26 @@ void Visualizer::forcePublishNow() const
             visualization_maker_array_pub_.publish(async_markers_);
             visualization_maker_array_pub_.publish(async_markers_);
             visualization_maker_array_pub_.publish(async_markers_);
-            arc_helpers::Sleep(0.01);
-            visualization_maker_array_pub_.publish(async_markers_);
             visualization_maker_array_pub_.publish(async_markers_);
             visualization_maker_array_pub_.publish(async_markers_);
             arc_helpers::Sleep(0.01);
+            ros::spinOnce();
 
+            visualization_maker_array_pub_.publish(async_markers_);
+            visualization_maker_array_pub_.publish(async_markers_);
+            visualization_maker_array_pub_.publish(async_markers_);
+            visualization_maker_array_pub_.publish(async_markers_);
+            visualization_maker_array_pub_.publish(async_markers_);
+            arc_helpers::Sleep(0.01);
             ros::spinOnce();
 
             arc_helpers::Sleep(0.01);
+            ros::spinOnce();
         }
         else
         {
             ROS_WARN_THROTTLE_NAMED(1.0, "visualizer", "forcePublishNow() does nothing if async publishing is not enabled.");
         }
-
-        purgeMarkerList();
     }
 }
 
