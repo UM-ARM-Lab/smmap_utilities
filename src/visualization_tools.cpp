@@ -247,7 +247,7 @@ void Visualizer::publish(const visualization_msgs::Marker& marker) const
     }
 }
 
-void Visualizer::forcePublishNow() const
+void Visualizer::forcePublishNow(const double last_delay) const
 {
     if (!disable_all_visualizations_)
     {
@@ -259,19 +259,25 @@ void Visualizer::forcePublishNow() const
             visualization_maker_array_pub_.publish(async_markers_);
             visualization_maker_array_pub_.publish(async_markers_);
             visualization_maker_array_pub_.publish(async_markers_);
-            arc_helpers::Sleep(0.01);
             ros::spinOnce();
+            arc_helpers::Sleep(0.01);
 
             visualization_maker_array_pub_.publish(async_markers_);
             visualization_maker_array_pub_.publish(async_markers_);
             visualization_maker_array_pub_.publish(async_markers_);
             visualization_maker_array_pub_.publish(async_markers_);
             visualization_maker_array_pub_.publish(async_markers_);
-            arc_helpers::Sleep(0.01);
             ros::spinOnce();
+            arc_helpers::Sleep(0.01);
 
-            arc_helpers::Sleep(0.01);
-            ros::spinOnce();
+            arc_helpers::Sleep(last_delay);
+
+//            ros::Rate rate(0.001);
+//            const auto start = std::chrono::steady_clock::now();
+//            while (std::chrono::duration<double>(std::chrono::steady_clock::now() - start).count() < last_delay)
+//            {
+//                rate.sleep();
+//            }
         }
         else
         {
@@ -306,7 +312,7 @@ void Visualizer::deleteAll() const
                 visualization_msgs::Marker& marker = async_markers_.markers[idx];
                 marker.action = visualization_msgs::Marker::DELETE;
                 marker.header.stamp = ros::Time::now();
-                marker.lifetime = ros::DURATION_MIN;
+                marker.lifetime = ros::Duration(0.1);
                 marker.points.clear();
                 marker.colors.clear();
             }
@@ -345,7 +351,7 @@ void Visualizer::deleteObjects(
         marker.header.frame_id = world_frame_name_;
         marker.action = visualization_msgs::Marker::DELETE;
         marker.ns = marker_name;
-        marker.lifetime = ros::DURATION_MIN;
+        marker.lifetime = ros::Duration(1.0);
 
         if (publish_async_)
         {
@@ -884,7 +890,7 @@ void Visualizer::visualizeXYZTrajectory(
 
 void Visualizer::publishAsyncMain()
 {
-    const double freq = ROSHelpers::GetParam<double>(ph_, "async_publish_frequency", 100.0);
+    const double freq = ROSHelpers::GetParam<double>(ph_, "async_publish_frequency", 20.0);
     ros::Rate rate(freq);
     while (ros::ok())
     {

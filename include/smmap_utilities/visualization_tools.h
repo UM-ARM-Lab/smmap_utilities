@@ -41,7 +41,7 @@ namespace smmap_utilities
 
             void publish(const visualization_msgs::Marker& marker) const;
 
-            void forcePublishNow() const;
+            void forcePublishNow(const double last_delay = 0.01) const;
 
             void clearVisualizationsBullet();
 
