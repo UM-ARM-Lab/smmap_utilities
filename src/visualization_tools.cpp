@@ -271,13 +271,6 @@ void Visualizer::forcePublishNow(const double last_delay) const
             arc_helpers::Sleep(0.01);
 
             arc_helpers::Sleep(last_delay);
-
-//            ros::Rate rate(0.001);
-//            const auto start = std::chrono::steady_clock::now();
-//            while (std::chrono::duration<double>(std::chrono::steady_clock::now() - start).count() < last_delay)
-//            {
-//                rate.sleep();
-//            }
         }
         else
         {
