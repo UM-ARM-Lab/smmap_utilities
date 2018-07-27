@@ -210,6 +210,7 @@ Visualizer::Visualizer(
 
         if (publish_async_)
         {
+            async_markers_.markers.clear();
             publish_thread_ = std::thread(&Visualizer::publishAsyncMain, this);
         }
     }
@@ -889,7 +890,10 @@ void Visualizer::publishAsyncMain()
     {
         {
             std::lock_guard<std::mutex> lock(markers_mtx_);
-            visualization_maker_array_pub_.publish(async_markers_);
+            if (async_markers_.markers.size() > 0)
+            {
+                visualization_maker_array_pub_.publish(async_markers_);
+            }
         }
         rate.sleep();
     }
