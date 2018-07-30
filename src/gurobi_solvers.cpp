@@ -15,15 +15,26 @@ using namespace EigenHelpers;
 static std::mutex gurobi_env_construct_mtx;
 
 // TODO: this loop is highly inefficient, this ought to be doable in a better way
-GRBQuadExpr buildQuadraticTerm(GRBVar* left_vars, GRBVar* right_vars, const MatrixXd& Q)
+// Note that this function assumes that the matrix Q is symmetric
+GRBQuadExpr buildQuadraticTerm(GRBVar* vars, const MatrixXd& Q)
 {
     GRBQuadExpr expr;
 
+    // Main diagonal
+    for (ssize_t ind = 0; ind < Q.rows(); ++ind)
+    {
+        expr += Q(ind, ind) * vars[(size_t)ind] * vars[(size_t)ind];
+    }
+
+    // Off diagonal
     for (ssize_t right_ind = 0; right_ind < Q.rows(); ++right_ind)
     {
-        for (ssize_t left_ind = 0; left_ind < Q.cols(); ++left_ind)
+        for (ssize_t left_ind = right_ind + 1; left_ind < Q.cols(); ++left_ind)
         {
-            expr += left_vars[(size_t)left_ind] * Q(left_ind, right_ind) * right_vars[(size_t)right_ind];
+            if (std::abs(Q(left_ind, right_ind)) > 1e-10)
+            {
+                expr += 2.0 * Q(left_ind, right_ind) * vars[(size_t)left_ind] * vars[(size_t)right_ind];
+            }
         }
     }
 
@@ -163,7 +174,7 @@ VectorXd smmap_utilities::minSquaredNorm(
 
             const RowVectorXd L = -2.0 * b.transpose() * A;
 
-            GRBQuadExpr objective_fn = buildQuadraticTerm(vars, vars, Q);
+            GRBQuadExpr objective_fn = buildQuadraticTerm(vars, Q);
             objective_fn.addTerms(L.data(), vars, (int)num_vars);
             model.setObjective(objective_fn, GRB_MINIMIZE);
         }
@@ -253,7 +264,7 @@ VectorXd smmap_utilities::minSquaredNorm(
 
             const RowVectorXd L = -2.0 * b.transpose() * weights.asDiagonal() * A;
 
-            GRBQuadExpr objective_fn = buildQuadraticTerm(vars, vars, Q);
+            GRBQuadExpr objective_fn = buildQuadraticTerm(vars, Q);
             objective_fn.addTerms(L.data(), vars, (int)num_vars);
             model.setObjective(objective_fn, GRB_MINIMIZE);
         }
@@ -373,7 +384,7 @@ VectorXd smmap_utilities::minSquaredNormLinearConstraints(
 
             const RowVectorXd L = -2.0 * b.transpose() * weights.asDiagonal() * A;
 
-            GRBQuadExpr objective_fn = buildQuadraticTerm(vars, vars, Q);
+            GRBQuadExpr objective_fn = buildQuadraticTerm(vars, Q);
             objective_fn.addTerms(L.data(), vars, (int)num_vars);
             model.setObjective(objective_fn, GRB_MINIMIZE);
         }
@@ -504,7 +515,7 @@ VectorXd smmap_utilities::minSquaredNormLinearConstraints_SE3VelocityConstraints
             {
                 const auto J_block = J.middleRows<6>(i * 6);
                 const MatrixXd JtJ = J_block.transpose() * J_block;
-                model.addQConstr(buildQuadraticTerm(vars, vars, JtJ), GRB_LESS_EQUAL, max_se3_velocity * max_se3_velocity);
+                model.addQConstr(buildQuadraticTerm(vars, JtJ), GRB_LESS_EQUAL, max_se3_velocity * max_se3_velocity);
             }
             model.update();
         }
@@ -539,7 +550,7 @@ VectorXd smmap_utilities::minSquaredNormLinearConstraints_SE3VelocityConstraints
 
             const RowVectorXd L = -2.0 * b.transpose() * weights.asDiagonal() * A;
 
-            GRBQuadExpr objective_fn = buildQuadraticTerm(vars, vars, Q);
+            GRBQuadExpr objective_fn = buildQuadraticTerm(vars, Q);
             objective_fn.addTerms(L.data(), vars, (int)num_vars);
             model.setObjective(objective_fn, GRB_MINIMIZE);
         }
@@ -672,7 +683,7 @@ VectorXd smmap_utilities::minSquaredNormLinearConstraintsQuadraticConstraints_SE
             {
                 const auto J_block = J.middleRows<6>(i * 6);
                 const MatrixXd JtJ = J_block.transpose() * J_block;
-                model.addQConstr(buildQuadraticTerm(vars, vars, JtJ), GRB_LESS_EQUAL, max_se3_velocity * max_se3_velocity);
+                model.addQConstr(buildQuadraticTerm(vars, JtJ), GRB_LESS_EQUAL, max_se3_velocity * max_se3_velocity);
             }
             model.update();
         }
@@ -700,7 +711,7 @@ VectorXd smmap_utilities::minSquaredNormLinearConstraintsQuadraticConstraints_SE
 
             for (size_t ind = 0; ind < num_quadratic_constraints; ++ind)
             {
-                GRBQuadExpr expr = buildQuadraticTerm(vars, vars, quadratic_constraint_quadratic_terms[ind]);
+                GRBQuadExpr expr = buildQuadraticTerm(vars, quadratic_constraint_quadratic_terms[ind]);
                 expr.addTerms(quadratic_constraint_linear_terms[ind].data(), vars, (int)num_vars);
                 model.addQConstr(expr <= quadratic_constraint_affine_terms[ind]);
             }
@@ -724,7 +735,7 @@ VectorXd smmap_utilities::minSquaredNormLinearConstraintsQuadraticConstraints_SE
 
             const RowVectorXd L = -2.0 * b.transpose() * weights.asDiagonal() * A;
 
-            GRBQuadExpr objective_fn = buildQuadraticTerm(vars, vars, Q);
+            GRBQuadExpr objective_fn = buildQuadraticTerm(vars, Q);
             objective_fn.addTerms(L.data(), vars, (int)num_vars);
             model.setObjective(objective_fn, GRB_MINIMIZE);
         }
@@ -881,7 +892,7 @@ VectorXd smmap_utilities::minSquaredNormSE3VelocityConstraints(
 
             const RowVectorXd L = -2.0 * b.transpose() * weights.asDiagonal() * A;
 
-            GRBQuadExpr objective_fn = buildQuadraticTerm(vars, vars, Q);
+            GRBQuadExpr objective_fn = buildQuadraticTerm(vars, Q);
             objective_fn.addTerms(L.data(), vars, (int)num_vars);
             model.setObjective(objective_fn, GRB_MINIMIZE);
             model.update();
@@ -987,7 +998,7 @@ VectorVector3d smmap_utilities::denoiseWithDistanceConstraints(
                 // min w * || x - z ||^2 is the same as min w x^T x - 2 w z^T x = x^T Q x + L x
                 const Matrix3d Q = observation_strength(i) * Matrix3d::Identity();
                 const Vector3d L = - 2.0 * observation_strength(i) * observations[i];
-                objective_fn += buildQuadraticTerm(&vars[i * 3], &vars[i * 3], Q);
+                objective_fn += buildQuadraticTerm(&vars[i * 3], Q);
                 objective_fn.addTerms(L.data(), &vars[i * 3], 3);
             }
             model.setObjective(objective_fn, GRB_MINIMIZE);
@@ -1049,7 +1060,7 @@ std::pair<VectorXd, double> smmap_utilities::minimizeConstraintViolations(
 {
     VectorXd x;
     double c_vio = std::numeric_limits<double>::quiet_NaN();
-    GRBVar* x_vars = nullptr;
+    GRBVar* vars = nullptr;
     GRBVar c_violation_var;
     try
     {
@@ -1068,13 +1079,13 @@ std::pair<VectorXd, double> smmap_utilities::minimizeConstraintViolations(
             {
                 assert(x_lower_bound.size() == num_vars);
                 assert(x_lower_bound.size() == x_upper_bound.size());
-                x_vars = model.addVars(x_lower_bound.data(), x_upper_bound.data(), nullptr, nullptr, nullptr, (int)num_vars);
+                vars = model.addVars(x_lower_bound.data(), x_upper_bound.data(), nullptr, nullptr, nullptr, (int)num_vars);
             }
             else
             {
                 const std::vector<double> lb(num_vars, -max_x_norm);
                 const std::vector<double> ub(num_vars, max_x_norm);
-                x_vars = model.addVars(lb.data(), ub.data(), nullptr, nullptr, nullptr, (int)num_vars);
+                vars = model.addVars(lb.data(), ub.data(), nullptr, nullptr, nullptr, (int)num_vars);
             }
             const double coeff = 1.0;
             c_violation_var = model.addVar(constraint_lower_bound, constraint_upper_bound, coeff, GRB_CONTINUOUS);
@@ -1085,12 +1096,12 @@ std::pair<VectorXd, double> smmap_utilities::minimizeConstraintViolations(
         // Add the x norm constraint
         {
             GRBQuadExpr constr;
-            constr += x_vars[0] * x_vars[0];
-            constr += x_vars[1] * x_vars[1];
-            constr += x_vars[2] * x_vars[2];
-            constr += x_vars[3] * x_vars[3] / 400.0;
-            constr += x_vars[4] * x_vars[4] / 400.0;
-            constr += x_vars[5] * x_vars[5] / 400.0;
+            constr += vars[0] * vars[0];
+            constr += vars[1] * vars[1];
+            constr += vars[2] * vars[2];
+            constr += vars[3] * vars[3] / 400.0;
+            constr += vars[4] * vars[4] / 400.0;
+            constr += vars[5] * vars[5] / 400.0;
             model.addQConstr(constr <= max_x_norm * max_x_norm);
             model.update();
         }
@@ -1103,7 +1114,7 @@ std::pair<VectorXd, double> smmap_utilities::minimizeConstraintViolations(
             {
                 assert(linear_constraint_linear_terms[ind].size() == num_vars);
                 GRBLinExpr lhs(0.0);
-                lhs.addTerms(linear_constraint_linear_terms[ind].data(), x_vars, (int)num_vars);
+                lhs.addTerms(linear_constraint_linear_terms[ind].data(), vars, (int)num_vars);
                 model.addConstr(lhs + linear_constraint_affine_terms[ind] <= c_violation_var);
             }
         }
@@ -1121,7 +1132,7 @@ std::pair<VectorXd, double> smmap_utilities::minimizeConstraintViolations(
                 x.resize(num_vars);
                 for (ssize_t var_ind = 0; var_ind < num_vars; var_ind++)
                 {
-                    x(var_ind) = x_vars[var_ind].get(GRB_DoubleAttr_X);
+                    x(var_ind) = vars[var_ind].get(GRB_DoubleAttr_X);
                 }
                 c_vio = c_violation_var.get(GRB_DoubleAttr_X);
             }
@@ -1142,7 +1153,7 @@ std::pair<VectorXd, double> smmap_utilities::minimizeConstraintViolations(
         std::cout << "Exception during optimization" << std::endl;
     }
 
-    delete[] x_vars;
+    delete[] vars;
     return {x, c_vio};
 }
 
@@ -1162,7 +1173,7 @@ VectorXd smmap_utilities::findClosestValidPoint(
         const VectorXd& x_upper_bound)
 {
     VectorXd x;
-    GRBVar* x_vars = nullptr;
+    GRBVar* vars = nullptr;
     try
     {
         const ssize_t num_vars = starting_point.size();
@@ -1182,20 +1193,20 @@ VectorXd smmap_utilities::findClosestValidPoint(
             {
                 assert(x_lower_bound.size() == num_vars);
                 assert(x_lower_bound.size() == x_upper_bound.size());
-                x_vars = model.addVars(x_lower_bound.data(), x_upper_bound.data(), nullptr, nullptr, nullptr, (int)num_vars);
+                vars = model.addVars(x_lower_bound.data(), x_upper_bound.data(), nullptr, nullptr, nullptr, (int)num_vars);
             }
             else
             {
                 const std::vector<double> lb(num_vars, -max_x_norm);
                 const std::vector<double> ub(num_vars, max_x_norm);
-                x_vars = model.addVars(lb.data(), ub.data(), nullptr, nullptr, nullptr, (int)num_vars);
+                vars = model.addVars(lb.data(), ub.data(), nullptr, nullptr, nullptr, (int)num_vars);
             }
             model.update();
         }
 
         // Add the x norm constraint
         {
-            model.addQConstr(normSquared(x_vars, num_vars), GRB_LESS_EQUAL, max_x_norm * max_x_norm);
+            model.addQConstr(normSquared(vars, num_vars), GRB_LESS_EQUAL, max_x_norm * max_x_norm);
             model.update();
         }
 
@@ -1207,7 +1218,7 @@ VectorXd smmap_utilities::findClosestValidPoint(
             {
                 assert(linear_constraint_linear_terms[ind].size() == num_vars);
                 GRBLinExpr lhs = 0.0;
-                lhs.addTerms(linear_constraint_linear_terms[ind].data(), x_vars, (int)num_vars);
+                lhs.addTerms(linear_constraint_linear_terms[ind].data(), vars, (int)num_vars);
                 model.addConstr(lhs + linear_constraint_affine_terms[ind] <= 0.0);
             }
         }
@@ -1217,20 +1228,21 @@ VectorXd smmap_utilities::findClosestValidPoint(
             GRBQuadExpr objective_fn = 0;
             for (ssize_t ind = 0; ind < num_vars; ++ind)
             {
-                objective_fn += (x_vars[ind] - starting_point(ind)) * (x_vars[ind] - starting_point(ind));
+                objective_fn += (vars[ind] - starting_point(ind)) * (vars[ind] - starting_point(ind));
             }
             model.setObjective(objective_fn, GRB_MINIMIZE);
         }
 
         // Find the optimal solution and extract it
         {
+            model.update();
             model.optimize();
             if (model.get(GRB_IntAttr_Status) == GRB_OPTIMAL)
             {
                 x.resize(num_vars);
                 for (ssize_t var_ind = 0; var_ind < num_vars; var_ind++)
                 {
-                    x(var_ind) = x_vars[var_ind].get(GRB_DoubleAttr_X);
+                    x(var_ind) = vars[var_ind].get(GRB_DoubleAttr_X);
                 }
             }
             else
@@ -1250,6 +1262,200 @@ VectorXd smmap_utilities::findClosestValidPoint(
         std::cout << "Exception during optimization" << std::endl;
     }
 
-    delete[] x_vars;
+    delete[] vars;
+    return x;
+}
+
+
+// Designed to find a feasbible point for problems of the form:
+// Minimize     || x - starting_point ||
+// subject to   linear * x + affine <= 0
+//              x' * quad * x + quadlin * x + affine <= 0
+//              lb <= x
+//                    x <= ub
+//              || x || <= max_norm
+VectorXd smmap_utilities::findClosestValidPoint(
+        const VectorXd& starting_point,
+        const MatrixXd& J,
+        const double max_se3_velocity,
+        const std::vector<RowVectorXd>& linear_constraint_linear_terms,
+        const std::vector<double>& linear_constraint_affine_terms,
+        const std::vector<MatrixXd>& quadratic_constraint_quadratic_terms,
+        const std::vector<RowVectorXd>& quadratic_constraint_linear_terms,
+        const std::vector<double>& quadratic_constraint_affine_terms,
+        const VectorXd& x_lower_bound,
+        const VectorXd& x_upper_bound)
+{
+    VectorXd x;
+    GRBVar* vars = nullptr;
+    try
+    {
+        const ssize_t num_vars = starting_point.size();
+
+        // TODO: Find a way to put a scoped lock here
+        gurobi_env_construct_mtx.lock();
+        GRBEnv env;
+        gurobi_env_construct_mtx.unlock();
+
+        // Disables logging to file and logging to console (when 0 is the value of the flag)
+        env.set(GRB_IntParam_OutputFlag, 0);
+        // http://www.gurobi.com/documentation/7.5/refman/dualreductions.html
+//        env.set(GRB_IntParam_DualReductions, 0);
+        // http://www.gurobi.com/documentation/7.5/refman/numericfocus.html
+//        env.set(GRB_IntParam_NumericFocus, 3);
+        GRBModel model(env);
+
+        // Add the vars to the model
+        {
+            if (x_lower_bound.size() > 0)
+            {
+                assert(x_lower_bound.size() == num_vars);
+                assert(x_lower_bound.size() == x_upper_bound.size());
+                vars = model.addVars(x_lower_bound.data(), x_upper_bound.data(), nullptr, nullptr, nullptr, (int)num_vars);
+            }
+            else
+            {
+                const std::vector<double> lb(num_vars, -GRB_INFINITY);
+                const std::vector<double> ub(num_vars, GRB_INFINITY);
+                vars = model.addVars(lb.data(), ub.data(), nullptr, nullptr, nullptr, (int)num_vars);
+            }
+            model.update();
+        }
+
+        // Add the SE3 velocity constraint
+        {
+            for (ssize_t i = 0; i < num_vars / 6; ++i)
+            {
+                const auto J_block = J.middleRows<6>(i * 6);
+                const MatrixXd JtJ = J_block.transpose() * J_block;
+                const auto expr = buildQuadraticTerm(vars, JtJ);
+                model.addQConstr(expr <= max_se3_velocity * max_se3_velocity, "SE3_velocity_limit_gripper_" + std::to_string(i));
+            }
+            model.update();
+        }
+
+        // Add the linear constraint terms
+        {
+            assert(linear_constraint_linear_terms.size() == linear_constraint_affine_terms.size());
+            const size_t num_linear_constraints = linear_constraint_linear_terms.size();
+            for (size_t ind = 0; ind < num_linear_constraints; ++ind)
+            {
+                assert(linear_constraint_linear_terms[ind].size() == num_vars);
+                GRBLinExpr lhs = 0.0;
+                lhs.addTerms(linear_constraint_linear_terms[ind].data(), vars, (int)num_vars);
+                model.addConstr(lhs <= linear_constraint_affine_terms[ind]);
+            }
+        }
+
+        // Add the quadratic constraints
+        {
+            const size_t num_quadratic_constraints = quadratic_constraint_quadratic_terms.size();
+
+            assert(quadratic_constraint_linear_terms.size() == num_quadratic_constraints);
+            assert(quadratic_constraint_affine_terms.size() == num_quadratic_constraints);
+
+            for (size_t ind = 0; ind < num_quadratic_constraints; ++ind)
+            {
+                GRBQuadExpr expr = buildQuadraticTerm(vars, quadratic_constraint_quadratic_terms[ind]);
+                expr.addTerms(quadratic_constraint_linear_terms[ind].data(), vars, (int)num_vars);
+                model.addQConstr(expr <= quadratic_constraint_affine_terms[ind]);
+            }
+        }
+
+        // Build the objective function
+        {
+            GRBQuadExpr objective_fn = 0;
+            for (ssize_t ind = 0; ind < num_vars; ++ind)
+            {
+                objective_fn += (vars[ind] - starting_point(ind)) * (vars[ind] - starting_point(ind));
+            }
+            model.setObjective(objective_fn, GRB_MINIMIZE);
+        }
+
+        // Find the optimal solution and extract it
+        {
+            model.update();
+            model.write("/tmp/gurobi_model.lp");
+            model.write("/tmp/gurobi_model.mps");
+
+            model.optimize();
+            if (model.get(GRB_IntAttr_Status) == GRB_OPTIMAL)
+            {
+                x.resize(num_vars);
+                for (ssize_t var_ind = 0; var_ind < num_vars; var_ind++)
+                {
+                    x(var_ind) = vars[var_ind].get(GRB_DoubleAttr_X);
+                }
+            }
+            else
+            {
+                std::cout << "Optimal solution not found" << std::endl;
+
+                std::cout << "\033[1;31m Gurobi Failure: Status: " << model.get(GRB_IntAttr_Status) << "\033[0m\n";
+
+
+                std::cout << "x_starting_point = [" << starting_point.transpose() << "]';\n";
+
+                std::cout << "J_matrix = [\n" << J << "];\n";
+
+                std::cout << "max_se3_norm = " << max_se3_velocity << ";\n";
+
+
+                std::cout << "Linear_constraint_linear_terms = [\n";
+                for (size_t idx = 0; idx < linear_constraint_linear_terms.size(); ++idx)
+                {
+                    std::cout << linear_constraint_linear_terms[idx] << std::endl;
+                }
+                std::cout << "];\n";
+
+                std::cout << "Linear_constraint_affine_terms = [";
+                for (size_t idx = 0; idx < linear_constraint_affine_terms.size(); ++idx)
+                {
+                    std::cout << linear_constraint_affine_terms[idx] << " ";
+                }
+                std::cout << "]';\n";
+
+
+
+                std::cout << "Quadratic_constraint_quadratic_terms = [\n";
+                for (size_t idx = 0; idx < quadratic_constraint_quadratic_terms.size(); ++idx)
+                {
+                    std::cout << quadratic_constraint_quadratic_terms[idx] << std::endl;
+                }
+                std::cout << "];\n";
+
+                std::cout << "Quadratic_constraint_linear_terms = [\n";
+                for (size_t idx = 0; idx < quadratic_constraint_linear_terms.size(); ++idx)
+                {
+                    std::cout << quadratic_constraint_linear_terms[idx] << std::endl;
+                }
+                std::cout << "];\n";
+
+                std::cout << "Quadratic_constraint_affine_terms = [";
+                for (size_t idx = 0; idx < quadratic_constraint_affine_terms.size(); ++idx)
+                {
+                    std::cout << quadratic_constraint_affine_terms[idx] << " ";
+                }
+                std::cout << "]';\n";
+
+
+
+                std::cout << "x_lower_bound = [" << x_lower_bound.transpose() << "]';\n";
+                std::cout << "x_upper_bound = [" << x_upper_bound.transpose() << "]';\n";
+                std::cout << std::endl;
+            }
+        }
+    }
+    catch(GRBException& e)
+    {
+        std::cout << "Error code = " << e.getErrorCode() << std::endl;
+        std::cout << e.getMessage() << std::endl;
+    }
+    catch(...)
+    {
+        std::cout << "Exception during optimization" << std::endl;
+    }
+
+    delete[] vars;
     return x;
 }
