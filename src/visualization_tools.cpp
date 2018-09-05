@@ -491,7 +491,8 @@ void Visualizer::visualizeCubes(
     }
 }
 
-void Visualizer::visualizeSpheres(const std::string& marker_name,
+void Visualizer::visualizeSpheres(
+        const std::string& marker_name,
         const EigenHelpers::VectorVector3d& points,
         const std_msgs::ColorRGBA& color,
         const int32_t starting_id,
