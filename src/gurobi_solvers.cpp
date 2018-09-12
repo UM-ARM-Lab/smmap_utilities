@@ -1,7 +1,6 @@
 #include "smmap_utilities/gurobi_solvers.h"
 #include <gurobi_c++.h>
 #include <iostream>
-#include <mutex>
 #include <Eigen/Eigenvalues>
 #include <arc_utilities/eigen_helpers.hpp>
 
@@ -9,10 +8,18 @@ using namespace Eigen;
 using namespace EigenHelpers;
 
 ////////////////////////////////////////////////////////////////
-// Internally used functions and static objects
+// Internally used static objects
 ////////////////////////////////////////////////////////////////
 
-static std::mutex gurobi_env_construct_mtx;
+GRBEnv& getGRBEnv()
+{
+    static GRBEnv env;
+    return env;
+}
+
+////////////////////////////////////////////////////////////////
+// Internally used functions
+////////////////////////////////////////////////////////////////
 
 // TODO: this loop is highly inefficient, this ought to be doable in a better way
 // Note that this function assumes that the matrix Q is symmetric
@@ -135,10 +142,7 @@ VectorXd smmap_utilities::minSquaredNorm(
     {
         const ssize_t num_vars = A.cols();
 
-        // TODO: Find a way to put a scoped lock here
-        gurobi_env_construct_mtx.lock();
-        GRBEnv env;
-        gurobi_env_construct_mtx.unlock();
+        GRBEnv& env = getGRBEnv();
 
         // Disables logging to file and logging to console (with a 0 as the value of the flag)
         env.set(GRB_IntParam_OutputFlag, 0);
@@ -225,10 +229,7 @@ VectorXd smmap_utilities::minSquaredNorm(
     {
         const ssize_t num_vars = A.cols();
 
-        // TODO: Find a way to put a scoped lock here
-        gurobi_env_construct_mtx.lock();
-        GRBEnv env;
-        gurobi_env_construct_mtx.unlock();
+        GRBEnv& env = getGRBEnv();
 
         // Disables logging to file and logging to console (with a 0 as the value of the flag)
         env.set(GRB_IntParam_OutputFlag, 0);
@@ -322,10 +323,7 @@ VectorXd smmap_utilities::minSquaredNormLinearConstraints(
     {
         const ssize_t num_vars = A.cols();
 
-        // TODO: Find a way to put a scoped lock here
-        gurobi_env_construct_mtx.lock();
-        GRBEnv env;
-        gurobi_env_construct_mtx.unlock();
+        GRBEnv& env = getGRBEnv();
 
         // Disables logging to file and logging to console (with a 0 as the value of the flag)
         env.set(GRB_IntParam_OutputFlag, 0);
@@ -477,10 +475,7 @@ VectorXd smmap_utilities::minSquaredNormLinearConstraints_SE3VelocityConstraints
         assert(J.rows() % 6 == 0 && "The mapping (J) between x and se3 velocities must come out to a round number of se3 velocities");
         assert(J.cols() == num_vars);
 
-        // TODO: Find a way to put a scoped lock here
-        gurobi_env_construct_mtx.lock();
-        GRBEnv env;
-        gurobi_env_construct_mtx.unlock();
+        GRBEnv& env = getGRBEnv();
 
         // Disables logging to file and logging to console (with a 0 as the value of the flag)
         env.set(GRB_IntParam_OutputFlag, 0);
@@ -651,10 +646,7 @@ VectorXd smmap_utilities::minSquaredNormLinearConstraintsQuadraticConstraints_SE
         assert(J.rows() % 6 == 0 && "The mapping (J) between x and se3 velocities must come out to a round number of se3 velocities");
         assert(J.cols() == num_vars);
 
-        // TODO: Find a way to put a scoped lock here
-        gurobi_env_construct_mtx.lock();
-        GRBEnv env;
-        gurobi_env_construct_mtx.unlock();
+        GRBEnv& env = getGRBEnv();
 
         // Disables logging to file and logging to console (with a 0 as the value of the flag)
         env.set(GRB_IntParam_OutputFlag, 0);
@@ -850,10 +842,7 @@ VectorXd smmap_utilities::minSquaredNormSE3VelocityConstraints(
         assert(A.rows() == b.rows());
         assert(weights.rows() == b.rows());
 
-        // TODO: Find a way to put a scoped lock here
-        gurobi_env_construct_mtx.lock();
-        GRBEnv env;
-        gurobi_env_construct_mtx.unlock();
+        GRBEnv& env = getGRBEnv();
 
         // Disables logging to file and logging to console (with a 0 as the value of the flag)
         env.set(GRB_IntParam_OutputFlag, 0);
@@ -955,10 +944,7 @@ VectorVector3d smmap_utilities::denoiseWithDistanceConstraints(
         assert(distance_sq_constraints.rows() == num_vectors);
         assert(distance_sq_constraints.cols() == num_vectors);
 
-        // TODO: Find a way to put a scoped lock here
-        gurobi_env_construct_mtx.lock();
-        GRBEnv env;
-        gurobi_env_construct_mtx.unlock();
+        GRBEnv& env = getGRBEnv();
 
         // Disables logging to file and logging to console (with a 0 as the value of the flag)
         env.set(GRB_IntParam_OutputFlag, 0);
@@ -1064,10 +1050,7 @@ std::pair<VectorXd, double> smmap_utilities::minimizeConstraintViolations(
     GRBVar c_violation_var;
     try
     {
-        // TODO: Find a way to put a scoped lock here
-        gurobi_env_construct_mtx.lock();
-        GRBEnv env;
-        gurobi_env_construct_mtx.unlock();
+        GRBEnv& env = getGRBEnv();
 
         // Disables logging to file and logging to console (with a 0 as the value of the flag)
         env.set(GRB_IntParam_OutputFlag, 1);
@@ -1178,10 +1161,7 @@ VectorXd smmap_utilities::findClosestValidPoint(
     {
         const ssize_t num_vars = starting_point.size();
 
-        // TODO: Find a way to put a scoped lock here
-        gurobi_env_construct_mtx.lock();
-        GRBEnv env;
-        gurobi_env_construct_mtx.unlock();
+        GRBEnv& env = getGRBEnv();
 
         // Disables logging to file and logging to console (with a 0 as the value of the flag)
         env.set(GRB_IntParam_OutputFlag, 0);
@@ -1292,10 +1272,7 @@ VectorXd smmap_utilities::findClosestValidPoint(
     {
         const ssize_t num_vars = starting_point.size();
 
-        // TODO: Find a way to put a scoped lock here
-        gurobi_env_construct_mtx.lock();
-        GRBEnv env;
-        gurobi_env_construct_mtx.unlock();
+        GRBEnv& env = getGRBEnv();
 
         // Disables logging to file and logging to console (when 0 is the value of the flag)
         env.set(GRB_IntParam_OutputFlag, 0);
