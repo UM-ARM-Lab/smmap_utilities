@@ -59,6 +59,14 @@ namespace smmap_utilities
             const double max_se3_velocity,
             const Eigen::VectorXd& weights);
 
+    Eigen::VectorXd minSquaredNormSE3VelocityConstraints(
+            const Eigen::MatrixXd& A,
+            const Eigen::VectorXd& b,
+            const Eigen::VectorXd& weights,
+            const double max_se3_velocity,
+            const std::vector<Eigen::RowVectorXd>& linear_constraint_linear_terms,
+            const std::vector<double>& linear_constraint_affine_terms);
+
     EigenHelpers::VectorVector3d denoiseWithDistanceConstraints(
             const EigenHelpers::VectorVector3d& observations,
             const Eigen::VectorXd& observation_strength,
