@@ -4,7 +4,7 @@ A small repository of common utilities that were split off of the smmap reposito
 ## Dependencies
 * [Gurobi](https://www.gurobi.com)  
   Get academic license  
-  Download and [follow installation instructions for 7.0.X](http://www.gurobi.com/documentation/7.0/quickstart_linux/software_installation_guid.html#section:Installation) (extract to /opt, add some lines to .bashrc)  
+  Download and [follow installation instructions for 8.0.X](http://www.gurobi.com/documentation/8.0/quickstart_linux/software_installation_guid.html#section:Installation) (extract to /opt, add some lines to .bashrc)  
   Switch to using the g++5.2 version 
   
  ```
