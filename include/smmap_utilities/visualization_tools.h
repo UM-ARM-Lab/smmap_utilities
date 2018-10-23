@@ -41,6 +41,8 @@ namespace smmap_utilities
 
             void publish(const visualization_msgs::Marker& marker) const;
 
+            void publish(const visualization_msgs::MarkerArray& marker_array) const;
+
             void forcePublishNow(const double last_delay = 0.01) const;
 
             void clearVisualizationsBullet();
@@ -167,7 +169,18 @@ namespace smmap_utilities
                     const std_msgs::ColorRGBA& color,
                     const int32_t id = 3) const;
 
-            void visualizeLines(const std::string& marker_name,
+            void visualizeArrows(
+                    const std::string& marker_name,
+                    const EigenHelpers::VectorVector3d& start,
+                    const EigenHelpers::VectorVector3d& end,
+                    const std_msgs::ColorRGBA& color,
+                    const double scale_x,
+                    const double scale_y,
+                    const double scale_z = 0.0,
+                    const int32_t start_id = 1) const;
+
+            void visualizeLines(
+                    const std::string& marker_name,
                     const EigenHelpers::VectorVector3d& start,
                     const EigenHelpers::VectorVector3d& end,
                     const std_msgs::ColorRGBA& color,
@@ -189,6 +202,7 @@ namespace smmap_utilities
 
         private:
 
+            void updateMarkerList(const visualization_msgs::Marker& marker) const;
             void publishAsyncMain();
 
             ros::NodeHandle nh_;

@@ -216,6 +216,27 @@ Visualizer::Visualizer(
     }
 }
 
+// Shall only be used if the markers_mtx has already been acquired
+void Visualizer::updateMarkerList(const visualization_msgs::Marker& marker) const
+{
+    bool marker_found = false;
+    for (size_t idx = 0; idx < async_markers_.markers.size(); ++idx)
+    {
+        visualization_msgs::Marker& old_marker = async_markers_.markers[idx];
+        if (old_marker.id == marker.id && old_marker.ns == marker.ns)
+        {
+            old_marker = marker;
+            marker_found = true;
+            break;
+        }
+    }
+
+    if (!marker_found)
+    {
+        async_markers_.markers.push_back(marker);
+    }
+}
+
 void Visualizer::publish(const visualization_msgs::Marker& marker) const
 {
     if (!disable_all_visualizations_)
@@ -223,27 +244,32 @@ void Visualizer::publish(const visualization_msgs::Marker& marker) const
         if (publish_async_)
         {
             std::lock_guard<std::mutex> lock(markers_mtx_);
-
-            bool marker_found = false;
-            for (size_t idx = 0; idx < async_markers_.markers.size(); ++idx)
-            {
-                visualization_msgs::Marker& old_marker = async_markers_.markers[idx];
-                if (old_marker.id == marker.id && old_marker.ns == marker.ns)
-                {
-                    old_marker = marker;
-                    marker_found = true;
-                    break;
-                }
-            }
-
-            if (!marker_found)
-            {
-                async_markers_.markers.push_back(marker);
-            }
+            updateMarkerList(marker);
         }
         else
         {
             visualization_marker_pub_.publish(marker);
+        }
+    }
+}
+
+void Visualizer::publish(const visualization_msgs::MarkerArray& marker_array) const
+{
+    if (!disable_all_visualizations_)
+    {
+        if (publish_async_)
+        {
+            std::lock_guard<std::mutex> lock(markers_mtx_);
+            async_markers_.markers.reserve(
+                        async_markers_.markers.size() + marker_array.markers.size());
+            for (const auto& marker : marker_array.markers)
+            {
+                updateMarkerList(marker);
+            }
+        }
+        else
+        {
+            visualization_maker_array_pub_.publish(marker_array);
         }
     }
 }
@@ -801,6 +827,53 @@ void Visualizer::visualizeTranslation(
                     end.translation(),
                     color,
                     id);
+    }
+}
+
+void Visualizer::visualizeArrows(
+        const std::string& marker_name,
+        const EigenHelpers::VectorVector3d& start,
+        const EigenHelpers::VectorVector3d& end,
+        const std_msgs::ColorRGBA& color,
+        const double scale_x,
+        const double scale_y,
+        const double scale_z,
+        const int32_t start_id) const
+{
+    if (!disable_all_visualizations_)
+    {
+        assert(start.size() == end.size());
+
+        visualization_msgs::MarkerArray msg;
+        msg.markers.reserve(start.size());
+
+        visualization_msgs::Marker marker;
+        marker.header.frame_id = world_frame_name_;
+        marker.header.stamp = ros::Time::now();
+
+        // Assumes that all non specified values are 0.0
+        marker.pose.orientation.w = 1.0;
+
+        marker.type = visualization_msgs::Marker::ARROW;
+        marker.action = visualization_msgs::Marker::ADD;
+        marker.ns = marker_name;
+        marker.scale.x = scale_x;
+        marker.scale.y = scale_y;
+        marker.scale.z = scale_z;
+        marker.color = color;
+
+        for (size_t ind = 0; ind < start.size(); ind++)
+        {
+            marker.id = start_id + (int32_t)ind;
+
+            marker.points = {
+                EigenHelpersConversions::EigenVector3dToGeometryPoint(start[ind]),
+                EigenHelpersConversions::EigenVector3dToGeometryPoint(end[ind])};
+
+            msg.markers.push_back(marker);
+        }
+
+        publish(msg);
     }
 }
 
