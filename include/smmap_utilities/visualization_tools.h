@@ -33,6 +33,7 @@ namespace smmap_utilities
 
         public:
             typedef std::shared_ptr<Visualizer> Ptr;
+            typedef std::shared_ptr<const Visualizer> ConstPtr;
 
             Visualizer(
                     ros::NodeHandle& nh,
