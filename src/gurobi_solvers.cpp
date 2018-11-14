@@ -544,7 +544,7 @@ VectorXd smmap_utilities::minSquaredNorm_SE3VelocityConstraints(
 }
 
 // Minimizes || Ax - b ||_w subject to SE3 velocity constraints on x, and linear constraints
-// Linear constraint terms are of the form C * x + d <= 0
+// Linear constraint terms are of the form C * x <= d
 VectorXd smmap_utilities::minSquaredNorm_SE3VelocityConstraints_LinearConstraints(
         const MatrixXd& A,
         const VectorXd& b,
@@ -597,7 +597,7 @@ VectorXd smmap_utilities::minSquaredNorm_SE3VelocityConstraints_LinearConstraint
                 assert(linear_constraint_linear_terms[ind].size() == num_vars);
                 GRBLinExpr expr(0.0);
                 expr.addTerms(linear_constraint_linear_terms[ind].data(), vars, (int)num_vars);
-                model.addConstr(expr + linear_constraint_affine_terms[ind] <= 0.0);
+                model.addConstr(expr <= linear_constraint_affine_terms[ind]);
             }
             model.update();
         }
@@ -980,7 +980,7 @@ VectorXd smmap_utilities::minXNorm_LinearConstraints(
 
 // Designed to find a feasbible point for problems of the form:
 // Minimize     f(x)
-// subject to   linear * x + affine <= 0
+// subject to   linear * x <= affine
 //              lb <= x
 //                    x <= ub
 //              || x || <= max_norm
@@ -996,10 +996,12 @@ std::pair<VectorXd, double> smmap_utilities::minimizeConstraintViolations(
         const double constraint_lower_bound,
         const double constraint_upper_bound)
 {
+    assert(false && "This function has not been tested since explicitly minimizing slack, and converting to Ax <= b form");
+
     VectorXd x;
     double c_vio = std::numeric_limits<double>::quiet_NaN();
     GRBVar* vars = nullptr;
-    GRBVar c_violation_var;
+    GRBVar slack;
     try
     {
         GRBEnv& env = getGRBEnv();
@@ -1023,8 +1025,8 @@ std::pair<VectorXd, double> smmap_utilities::minimizeConstraintViolations(
                 vars = model.addVars(lb.data(), ub.data(), nullptr, nullptr, nullptr, (int)num_vars);
             }
             const double coeff = 1.0;
-            c_violation_var = model.addVar(constraint_lower_bound, constraint_upper_bound, coeff, GRB_CONTINUOUS);
-
+            // Note that the folloing also sets the objective to 1.0 * slack
+            slack = model.addVar(constraint_lower_bound, constraint_upper_bound, coeff, GRB_CONTINUOUS);
             model.update();
         }
 
@@ -1050,14 +1052,12 @@ std::pair<VectorXd, double> smmap_utilities::minimizeConstraintViolations(
                 assert(linear_constraint_linear_terms[ind].size() == num_vars);
                 GRBLinExpr lhs(0.0);
                 lhs.addTerms(linear_constraint_linear_terms[ind].data(), vars, (int)num_vars);
-                model.addConstr(lhs + linear_constraint_affine_terms[ind] <= c_violation_var);
+                model.addConstr(lhs <= linear_constraint_affine_terms[ind] + slack);
             }
+            model.update();
         }
 
-        // No need to add an objective, it's already set when we created c_violation_var
-//        std::cout << "Objective: " << model.getObjective() << std::endl;
-//        std::cout << model << std::endl;
-//        model.write("/home/dmcconac/test.lp");
+        // No need to add an objective, it's already set when we created "slack"
 
         // Find the optimal solution and extract it
         {
@@ -1069,7 +1069,7 @@ std::pair<VectorXd, double> smmap_utilities::minimizeConstraintViolations(
                 {
                     x(var_ind) = vars[var_ind].get(GRB_DoubleAttr_X);
                 }
-                c_vio = c_violation_var.get(GRB_DoubleAttr_X);
+                c_vio = slack.get(GRB_DoubleAttr_X);
             }
             else
             {
