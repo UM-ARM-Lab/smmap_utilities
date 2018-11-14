@@ -818,6 +818,103 @@ VectorXd smmap_utilities::minSquaredNormLinearConstraintsQuadraticConstraints_SE
     return x;
 }
 
+// Used to find a point that satisfies the linear constraints above in
+// minSquaredNormLinearConstraintsQuadraticConstraints_SE3VelocityConstraints
+// but discards the quadratic (i.e. max x norm) and SE3 velocity constraints to do it
+VectorXd smmap_utilities::minXNorm_LinearConstraints(
+        const std::vector<RowVectorXd>& linear_constraint_linear_terms,
+        const std::vector<double>& linear_constraint_affine_terms,
+        const VectorXd& x_weights,
+        const VectorXd& x_lower_bound,
+        const VectorXd& x_upper_bound)
+{
+    VectorXd x;
+    GRBVar* vars = nullptr;
+    try
+    {
+        const ssize_t num_vars = x_weights.rows();
+
+        // TODO: Find a way to put a scoped lock here
+        gurobi_env_construct_mtx.lock();
+        GRBEnv env;
+        gurobi_env_construct_mtx.unlock();
+
+        // Disables logging to file and logging to console (with a 0 as the value of the flag)
+        env.set(GRB_IntParam_OutputFlag, 0);
+        GRBModel model(env);
+
+        // Add the vars to the model
+        {
+            if (x_lower_bound.size() > 0)
+            {
+                assert(x_lower_bound.size() == num_vars);
+                assert(x_lower_bound.size() == x_upper_bound.size());
+                vars = model.addVars(x_lower_bound.data(), x_upper_bound.data(), nullptr, nullptr, nullptr, (int)num_vars);
+            }
+            else
+            {
+                const std::vector<double> lb(num_vars, -GRB_INFINITY);
+                const std::vector<double> ub(num_vars, GRB_INFINITY);
+                vars = model.addVars(lb.data(), ub.data(), nullptr, nullptr, nullptr, (int)num_vars);
+            }
+            model.update();
+        }
+
+        // Add the linear constraint terms
+        {
+            assert(linear_constraint_linear_terms.size() == linear_constraint_affine_terms.size());
+            const size_t num_linear_constraints = linear_constraint_linear_terms.size();
+            for (size_t ind = 0; ind < num_linear_constraints; ++ind)
+            {
+                assert(linear_constraint_linear_terms[ind].size() == num_vars);
+                GRBLinExpr expr(0.0);
+                expr.addTerms(linear_constraint_linear_terms[ind].data(), vars, (int)num_vars);
+                model.addConstr(expr <= linear_constraint_affine_terms[ind]);
+            }
+            model.update();
+        }
+
+        // Build the objective function
+        {
+            GRBQuadExpr objective_fn;
+            objective_fn.addTerms(x_weights.data(), vars, vars, int(num_vars));
+            model.setObjective(objective_fn, GRB_MINIMIZE);
+            model.update();
+        }
+
+        // Find the optimal solution and extract it
+        {
+            model.optimize();
+            if (model.get(GRB_IntAttr_Status) == GRB_OPTIMAL)
+            {
+                x.resize(num_vars);
+                for (ssize_t var_ind = 0; var_ind < num_vars; var_ind++)
+                {
+                    x(var_ind) = vars[var_ind].get(GRB_DoubleAttr_X);
+                }
+            }
+            else
+            {
+                std::cout << "Reduced Problem also unfeasible" << std::endl
+                          << "\033[1;31m Gurobi Failure: Status: " << model.get(GRB_IntAttr_Status) << "\033[0m\n";
+                x = VectorXd::Zero(num_vars);
+            }
+        }
+    }
+    catch(GRBException& e)
+    {
+        std::cout << "Error code = " << e.getErrorCode() << std::endl;
+        std::cout << e.getMessage() << std::endl;
+    }
+    catch(...)
+    {
+        std::cout << "Exception during optimization" << std::endl;
+    }
+
+    delete[] vars;
+    return x;
+}
+
 
 
 // Minimizes || Ax - b ||_w subject to SE3 velocity constraints on x
