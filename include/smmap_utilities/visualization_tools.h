@@ -36,8 +36,8 @@ namespace smmap_utilities
             typedef std::shared_ptr<const Visualizer> ConstPtr;
 
             Visualizer(
-                    ros::NodeHandle& nh,
-                    ros::NodeHandle& ph,
+                    std::shared_ptr<ros::NodeHandle> nh,
+                    std::shared_ptr<ros::NodeHandle> ph,
                     const bool publish_async = false);
 
             void publish(const visualization_msgs::Marker& marker) const;
@@ -206,8 +206,8 @@ namespace smmap_utilities
             void updateMarkerList(const visualization_msgs::Marker& marker) const;
             void publishAsyncMain();
 
-            ros::NodeHandle nh_;
-            ros::NodeHandle ph_;
+            const std::shared_ptr<ros::NodeHandle> nh_;
+            const std::shared_ptr<ros::NodeHandle> ph_;
 
             const bool publish_async_;
             std::thread publish_thread_;

@@ -190,23 +190,23 @@ std_msgs::ColorRGBA Visualizer::Orange(const float alpha)
 ////////////////////////////////////////////////////////////////////////////////
 
 Visualizer::Visualizer(
-        ros::NodeHandle& nh,
-        ros::NodeHandle& ph,
+        std::shared_ptr<ros::NodeHandle> nh,
+        std::shared_ptr<ros::NodeHandle> ph,
         const bool publish_async)
     : nh_(nh)
     , ph_(ph)
     , publish_async_(publish_async)
-    , disable_all_visualizations_(smmap::GetDisableAllVisualizations(ph_))
-    , clear_markers_srv_(nh_.serviceClient<std_srvs::Empty>(smmap::GetClearVisualizationsTopic(nh_), true))
+    , disable_all_visualizations_(smmap::GetDisableAllVisualizations(*ph_))
+    , clear_markers_srv_(nh_->serviceClient<std_srvs::Empty>(smmap::GetClearVisualizationsTopic(*nh_), true))
     , world_frame_name_(smmap::GetWorldFrameName())
-    , gripper_apperture_(smmap::GetGripperApperture(nh_))
+    , gripper_apperture_(smmap::GetGripperApperture(*nh_))
 {
     InitializeStandardColors();
     if (!disable_all_visualizations_)
     {
         clear_markers_srv_.waitForExistence();
-        visualization_marker_pub_ = nh.advertise<visualization_msgs::Marker>(smmap::GetVisualizationMarkerTopic(nh_), 256);
-        visualization_maker_array_pub_ = nh.advertise<visualization_msgs::MarkerArray>(smmap::GetVisualizationMarkerArrayTopic(nh_), 1);
+        visualization_marker_pub_ = nh_->advertise<visualization_msgs::Marker>(smmap::GetVisualizationMarkerTopic(*nh_), 256);
+        visualization_maker_array_pub_ = nh_->advertise<visualization_msgs::MarkerArray>(smmap::GetVisualizationMarkerArrayTopic(*nh_), 1);
 
         if (publish_async_)
         {
@@ -314,7 +314,7 @@ void Visualizer::clearVisualizationsBullet()
         while (!clear_markers_srv_.call(srv_data))
         {
             ROS_WARN_THROTTLE_NAMED(1.0, "visualizer", "Clear visualization data failed, reconnecting");
-            clear_markers_srv_ = nh_.serviceClient<std_srvs::Empty>(smmap::GetClearVisualizationsTopic(nh_), true);
+            clear_markers_srv_ = nh_->serviceClient<std_srvs::Empty>(smmap::GetClearVisualizationsTopic(*nh_), true);
             clear_markers_srv_.waitForExistence();
         }
     }
@@ -958,7 +958,7 @@ void Visualizer::visualizeXYZTrajectory(
 
 void Visualizer::publishAsyncMain()
 {
-    const double freq = ROSHelpers::GetParam<double>(ph_, "async_publish_frequency", 20.0);
+    const double freq = ROSHelpers::GetParam<double>(*ph_, "async_publish_frequency", 20.0);
     ros::Rate rate(freq);
     while (ros::ok())
     {
