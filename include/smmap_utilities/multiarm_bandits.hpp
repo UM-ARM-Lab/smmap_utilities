@@ -67,9 +67,9 @@ namespace smmap_utilities
                 assert(false && "This base version should never be called");
             }
 
-            virtual const Eigen::VectorXd& getMean() const = 0;
+            virtual Eigen::VectorXd getMean() const = 0;
 
-            virtual const Eigen::MatrixXd& getSecondStat() const = 0;
+            virtual Eigen::MatrixXd getSecondStat() const = 0;
 
         protected:
             size_t num_arms_;
@@ -154,7 +154,7 @@ namespace smmap_utilities
                 total_pulls_++;
             }
 
-            virtual const Eigen::VectorXd& getMean() const override final
+            virtual Eigen::VectorXd getMean() const override final
             {
                 Eigen::VectorXd mean((ssize_t)num_arms_);
                 for (size_t arm_ind = 0; arm_ind < num_arms_; arm_ind++)
@@ -164,7 +164,7 @@ namespace smmap_utilities
                 return mean;
             }
 
-            virtual const Eigen::MatrixXd& getSecondStat() const override final
+            virtual Eigen::MatrixXd getSecondStat() const override final
             {
                 return getUCB();
             }
@@ -267,12 +267,12 @@ namespace smmap_utilities
                 }
             }
 
-            virtual const Eigen::VectorXd& getMean() const override final
+            virtual Eigen::VectorXd getMean() const override final
             {
                 return arm_mean_;
             }
 
-            virtual const Eigen::MatrixXd& getSecondStat() const override final
+            virtual Eigen::MatrixXd getSecondStat() const override final
             {
                 return getVariance();
             }
@@ -366,12 +366,12 @@ namespace smmap_utilities
                 assert(!(arm_covar_.unaryExpr([] (const double &val) { return std::isinf(val); })).any() && "Inf Found in arm_covar_ in kalman bandit!");
             }
 
-            virtual const Eigen::VectorXd& getMean() const override final
+            virtual Eigen::VectorXd getMean() const override final
             {
                 return arm_mean_;
             }
 
-            virtual const Eigen::MatrixXd& getSecondStat() const override final
+            virtual Eigen::MatrixXd getSecondStat() const override final
             {
                 return getCovariance();
             }
