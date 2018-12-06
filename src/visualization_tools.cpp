@@ -951,7 +951,7 @@ void Visualizer::visualizeXYZTrajectory(
 {
     if (!disable_all_visualizations_)
     {
-        visualizeLineStrip(marker_name, point_sequence, color, id);
+        visualizeLineStrip(marker_name, point_sequence, color, id, 0.005);
     }
 }
 
