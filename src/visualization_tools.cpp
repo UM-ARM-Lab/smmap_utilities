@@ -914,6 +914,41 @@ void Visualizer::visualizeLines(
     }
 }
 
+void Visualizer::visualizeLines(
+        const std::string& marker_name,
+        const EigenHelpers::VectorVector3d& start,
+        const EigenHelpers::VectorVector3d& end,
+        const std::vector<std_msgs::ColorRGBA>& colors,
+        const int32_t id,
+        const double scale) const
+{
+    assert(start.size() == end.size());
+    assert(start.size() == colors.size());
+
+    visualization_msgs::Marker marker;
+
+    marker.header.frame_id = world_frame_name_;
+
+    marker.type = visualization_msgs::Marker::LINE_LIST;
+    marker.ns = marker_name;
+    marker.id = id;
+    marker.scale.x = scale;
+
+    for (size_t ind = 0; ind < start.size(); ind++)
+    {
+        marker.points.push_back(EigenHelpersConversions::EigenVector3dToGeometryPoint(start[ind]));
+        marker.points.push_back(EigenHelpersConversions::EigenVector3dToGeometryPoint(end[ind]));
+        marker.colors.push_back(colors[ind]);
+        marker.colors.push_back(colors[ind]);
+    }
+
+    // Assumes that all non specified values are 0.0
+    marker.pose.orientation.w = 1.0;
+
+    marker.header.stamp = ros::Time::now();
+    publish(marker);
+}
+
 void Visualizer::visualizeLineStrip(
         const std::string& marker_name,
         const EigenHelpers::VectorVector3d& point_sequence,

@@ -188,6 +188,14 @@ namespace smmap_utilities
                     const int32_t id = 1,
                     const double scale = 0.001) const;
 
+            void visualizeLines(
+                    const std::string& marker_name,
+                    const EigenHelpers::VectorVector3d& start,
+                    const EigenHelpers::VectorVector3d& end,
+                    const std::vector<std_msgs::ColorRGBA>& colors,
+                    const int32_t id = 1,
+                    const double scale = 0.001) const;
+
             void visualizeLineStrip(
                     const std::string& marker_name,
                     const EigenHelpers::VectorVector3d& point_sequence,
