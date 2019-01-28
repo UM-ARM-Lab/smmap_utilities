@@ -6,6 +6,7 @@ set(CATKIN_PACKAGES
     geometry_msgs
     kinematics_toolbox
     deformable_manipulation_experiment_params
+    deformable_manipulation_msgs
 )
 
 ## Add our local cmake modules to the list that can be found
