@@ -74,6 +74,20 @@ namespace smmap_utilities
                     const int32_t id = 1,
                     const double scale = 0.005) const;
 
+            void visualizePoints(
+                    const std::string& marker_name,
+                    const ObjectPointSet& points,
+                    const std_msgs::ColorRGBA& color,
+                    const int32_t id = 1,
+                    const double scale = 0.005) const;
+
+            void visualizePoints(
+                    const std::string& marker_name,
+                    const ObjectPointSet& points,
+                    const std::vector<std_msgs::ColorRGBA>& colors,
+                    const int32_t id = 1,
+                    const double scale = 0.005) const;
+
             void visualizeCubes(
                     const std::string& marker_name,
                     const EigenHelpers::VectorVector3d& points,

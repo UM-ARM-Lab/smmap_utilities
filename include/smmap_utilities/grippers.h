@@ -114,8 +114,8 @@ namespace smmap_utilities
         return vector_signed;
     }
 
-    std::vector<std::string> GetGripperNames(
-            const std::vector<GripperData> grippers_data);
+    std::vector<std::string> ExtractGripperNames(
+            const std::vector<GripperData>& grippers_data);
 
     /**
      * @brief getMinimumDistanceToGripper

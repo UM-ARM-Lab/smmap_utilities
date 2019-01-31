@@ -8,8 +8,8 @@ namespace smmap_utilities
     ////////////////////////////////////////////////////////////////////////////
     ////////////////////////////////////////////////////////////////////////////
 
-    std::vector<std::string> GetGripperNames(
-            const std::vector<GripperData> grippers_data)
+    std::vector<std::string> ExtractGripperNames(
+            const std::vector<GripperData>& grippers_data)
     {
         std::vector<std::string> names(grippers_data.size());
 

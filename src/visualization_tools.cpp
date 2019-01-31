@@ -475,6 +475,49 @@ void Visualizer::visualizePoints(
     }
 }
 
+void Visualizer::visualizePoints(
+        const std::string& marker_name,
+        const ObjectPointSet& points,
+        const std_msgs::ColorRGBA& color,
+        const int32_t id,
+        const double scale) const
+{
+    if (!disable_all_visualizations_)
+    {
+        const std::vector<std_msgs::ColorRGBA> colors(points.size(), color);
+        visualizePoints(marker_name, points, colors, id, scale);
+    }
+}
+
+void Visualizer::visualizePoints(
+        const std::string& marker_name,
+        const ObjectPointSet& points,
+        const std::vector<std_msgs::ColorRGBA>& colors,
+        const int32_t id,
+        const double scale) const
+{
+    if (!disable_all_visualizations_)
+    {
+        visualization_msgs::Marker marker;
+
+        marker.header.frame_id = world_frame_name_;
+
+        marker.type = visualization_msgs::Marker::POINTS;
+        marker.ns = marker_name;
+        marker.id = id;
+        marker.scale.x = scale;
+        marker.scale.y = scale;
+        marker.points = EigenHelpersConversions::EigenMatrix3XdToVectorGeometryPoint(points);
+        marker.colors = colors;
+
+        // Assumes that all non specified values are 0.0
+        marker.pose.orientation.w = 1.0;
+
+        marker.header.stamp = ros::Time::now();
+        publish(marker);
+    }
+}
+
 void Visualizer::visualizeCubes(
         const std::string& marker_name,
         const EigenHelpers::VectorVector3d& points,
