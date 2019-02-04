@@ -3,6 +3,7 @@
 #include <thread>
 #include <std_srvs/Empty.h>
 #include <arc_utilities/eigen_helpers_conversions.hpp>
+#include <arc_utilities/geometry_msgs_builders.hpp>
 
 using namespace smmap_utilities;
 
@@ -1030,6 +1031,45 @@ void Visualizer::visualizeXYZTrajectory(
     if (!disable_all_visualizations_)
     {
         visualizeLineStrip(marker_name, point_sequence, color, id, 0.002);
+    }
+}
+
+void Visualizer::visualizeAxes(
+        const std::string& marker_name,
+        const Eigen::Isometry3d& axes,
+        const double length,
+        const double thickness,
+        const int32_t id) const
+{
+    if (!disable_all_visualizations_)
+    {
+        visualization_msgs::Marker marker;
+        marker.header.frame_id = world_frame_name_;
+
+        marker.type = visualization_msgs::Marker::LINE_LIST;
+        marker.ns = marker_name;
+        marker.id = id;
+        marker.scale.x = thickness;
+
+        marker.pose = EigenHelpersConversions::EigenIsometry3dToGeometryPose(axes);
+        // X-axis
+        marker.points.push_back(arc_utilities::MakePoint(0.0, 0.0, 0.0));
+        marker.points.push_back(arc_utilities::MakePoint(length, 0.0, 0.0));
+        marker.colors.push_back(Red());
+        marker.colors.push_back(Red());
+        // Y-axis
+        marker.points.push_back(arc_utilities::MakePoint(0.0, 0.0, 0.0));
+        marker.points.push_back(arc_utilities::MakePoint(0.0, length, 0.0));
+        marker.colors.push_back(Green());
+        marker.colors.push_back(Green());
+        // Z-axis
+        marker.points.push_back(arc_utilities::MakePoint(0.0, 0.0, 0.0));
+        marker.points.push_back(arc_utilities::MakePoint(0.0, 0.0, length));
+        marker.colors.push_back(Blue());
+        marker.colors.push_back(Blue());
+
+        marker.header.stamp = ros::Time::now();
+        publish(marker);
     }
 }
 

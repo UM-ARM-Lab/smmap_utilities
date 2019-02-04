@@ -223,6 +223,13 @@ namespace smmap_utilities
                     const std_msgs::ColorRGBA& color,
                     const int32_t id = 1) const;
 
+            void visualizeAxes(
+                    const std::string& marker_name,
+                    const Eigen::Isometry3d& axes,
+                    const double length,
+                    const double thickness,
+                    const int32_t id = 1) const;
+
         private:
 
             void updateMarkerList(const visualization_msgs::Marker& marker) const;
