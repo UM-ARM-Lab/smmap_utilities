@@ -145,6 +145,19 @@ namespace smmap_utilities
     // Conversion functions
     ////////////////////////////////////////////////////////////////////////////
 
+    PairGripperPositions ToGripperPositions(
+            const EigenHelpers::VectorIsometry3d& poses)
+    {
+        assert(poses.size() == 2);
+        return {poses[0].translation(), poses[1].translation()};
+    }
+
+    PairGripperPositions ToGripperPositions(
+            const PairGripperPoses &poses)
+    {
+        return {poses.first.translation(), poses.second.translation()};
+    }
+
     // TODO:
     // # warning "Re-evaluate now this gripper pose delta math is done - remember Ruikun's example where the gripper went the wrong way"
     AllGrippersSinglePoseDelta CalculateGrippersPoseDelta(
@@ -600,55 +613,75 @@ namespace smmap_utilities
     ////////////////////////////////////////////////////////////////////////////
     ////////////////////////////////////////////////////////////////////////////
 
-    // TODO: update to use arc_utilities/serialization_eigen.hpp
-    uint64_t SerializeAllGrippersSinglePose(const AllGrippersSinglePose& poses, std::vector<uint8_t>& buffer)
+    uint64_t DeserializePair3dPositions(
+            const Pair3dPositions& positions,
+            std::vector<uint8_t>& buffer)
     {
-        const std::function<uint64_t(const Eigen::Isometry3d&, std::vector<uint8_t>&)> item_serializer = [] (const Eigen::Isometry3d& pose, std::vector<uint8_t>& buffer)
+        // TODO: determine why I need this lambda in order to avoid a linking error
+        const auto serializer = [] (const Pair3dPositions::first_type& position, std::vector<uint8_t>& buf)
         {
-            const uint64_t start_buffer_size = buffer.size();
-
-            const uint64_t datalength = 16 * sizeof(double);
-            const double* data = pose.data();
-            const uint8_t* raw_data = (const uint8_t*)(data);
-
-            // Fixed-size serialization via memcpy
-            std::vector<uint8_t> temp_buffer(datalength, 0x00);
-            memcpy(&temp_buffer[0], raw_data, datalength);
-
-            // Move to buffer
-            buffer.insert(buffer.end(), temp_buffer.begin(), temp_buffer.end());
-
-            // Figure out how many bytes were written
-            const uint64_t end_buffer_size = buffer.size();
-            const uint64_t bytes_written = end_buffer_size - start_buffer_size;
-
-            // Make sure that the amount we copied is the same as the amount we were asked for
-            assert(bytes_written == datalength);
-            return bytes_written;
+            return arc_utilities::SerializeEigen(position, buf);
         };
-        return arc_utilities::SerializeVector(poses, buffer, item_serializer);
+        return arc_utilities::SerializePair<Eigen::Vector3d, Eigen::Vector3d>(
+                    positions,
+                    buffer,
+                    serializer,
+                    serializer);
     }
 
-    std::pair<AllGrippersSinglePose, uint64_t> DeserializeAllGrippersSinglePose(const std::vector<uint8_t>& buffer, const uint64_t current)
+    std::pair<PairGripperPositions, uint64_t> DeserializePair3dPositions(
+            const std::vector<uint8_t>& buffer,
+            const uint64_t current)
     {
-        const std::function<std::pair<Eigen::Isometry3d, uint64_t>(const std::vector<uint8_t>&, const uint64_t)> item_deserializer = [] (const std::vector<uint8_t>& buffer, const uint64_t current)
-        {
-            // Make sure there is enough data left
-            const uint64_t datalength = 16 * sizeof(double);
-            assert(current <= buffer.size());
-            assert((current + datalength) <= buffer.size());
-
-            // Memcopy the data into the eigen matrix
-            Eigen::Isometry3d result;
-            memcpy(result.data(), &buffer[current], datalength);
-
-            // Return the result and the total amount of buffer "consumed"
-            return std::make_pair(result, datalength);
-        };
-        return arc_utilities::DeserializeVector<Eigen::Isometry3d, Eigen::aligned_allocator<Eigen::Isometry3d>>(buffer, current, item_deserializer);
+        return arc_utilities::DeserializePair<Pair3dPositions::first_type, Pair3dPositions::second_type>(
+                    buffer,
+                    current,
+                    arc_utilities::DeserializeEigen<Pair3dPositions::first_type>,
+                    arc_utilities::DeserializeEigen<Pair3dPositions::second_type>);
     }
 
-    uint64_t SerializeAllGrippersPoseTrajectory(const AllGrippersPoseTrajectory& traj, std::vector<uint8_t>& buffer)
+    uint64_t SerializePair3dPoses(
+            const Pair3dPoses& poses,
+            std::vector<uint8_t>& buffer)
+    {
+        return arc_utilities::SerializePair<Pair3dPoses::first_type, Pair3dPoses::second_type>(
+                    poses,
+                    buffer,
+                    arc_utilities::SerializeEigen<Pair3dPoses::first_type>,
+                    arc_utilities::SerializeEigen<Pair3dPoses::second_type>);
+    }
+
+    std::pair<Pair3dPoses, uint64_t> DeserializePair3dPoses(
+            const std::vector<uint8_t>& buffer,
+            const uint64_t current)
+    {
+        return arc_utilities::DeserializePair<Pair3dPoses::first_type, Pair3dPoses::second_type>(
+                    buffer,
+                    current,
+                    arc_utilities::DeserializeEigen<Pair3dPoses::first_type>,
+                    arc_utilities::DeserializeEigen<Pair3dPoses::second_type>);
+    }
+
+    uint64_t SerializeAllGrippersSinglePose(
+            const AllGrippersSinglePose& poses,
+            std::vector<uint8_t>& buffer)
+    {
+        return arc_utilities::SerializeVector(poses, buffer, arc_utilities::SerializeEigen<Eigen::Isometry3d>);
+    }
+
+    std::pair<AllGrippersSinglePose, uint64_t> DeserializeAllGrippersSinglePose(
+            const std::vector<uint8_t>& buffer,
+            const uint64_t current)
+    {
+        return arc_utilities::DeserializeVector<Eigen::Isometry3d, Eigen::aligned_allocator<Eigen::Isometry3d>>(
+                    buffer,
+                    current,
+                    arc_utilities::DeserializeEigen<Eigen::Isometry3d>);
+    }
+
+    uint64_t SerializeAllGrippersPoseTrajectory(
+            const AllGrippersPoseTrajectory& traj,
+            std::vector<uint8_t>& buffer)
     {
         const std::function<uint64_t(const AllGrippersSinglePose&, std::vector<uint8_t>&)> item_serializer = []
                 (const AllGrippersSinglePose& grippers_pose, std::vector<uint8_t>& buffer)
@@ -658,7 +691,9 @@ namespace smmap_utilities
         return arc_utilities::SerializeVector(traj, buffer, item_serializer);
     }
 
-    std::pair<AllGrippersPoseTrajectory, uint64_t> DeserializeAllGrippersPoseTrajectory(const std::vector<uint8_t>& buffer, const uint64_t current)
+    std::pair<AllGrippersPoseTrajectory, uint64_t> DeserializeAllGrippersPoseTrajectory(
+            const std::vector<uint8_t>& buffer,
+            const uint64_t current)
     {
         const std::function<std::pair<AllGrippersSinglePose, uint64_t>(const std::vector<uint8_t>&, const uint64_t)> item_deserializer = []
                 (const std::vector<uint8_t>& buffer, const uint64_t current)
@@ -668,7 +703,9 @@ namespace smmap_utilities
         return arc_utilities::DeserializeVector(buffer, current, item_deserializer);
     }
 
-    uint64_t SerializeCollisionDataVector(const std::vector<CollisionData>& data, std::vector<uint8_t>& buffer)
+    uint64_t SerializeCollisionDataVector(
+            const std::vector<CollisionData>& data,
+            std::vector<uint8_t>& buffer)
     {
         const std::function<uint64_t(const CollisionData&, std::vector<uint8_t>&)> item_serializer = []
                 (const CollisionData& data, std::vector<uint8_t>& buffer)
@@ -678,7 +715,9 @@ namespace smmap_utilities
         return arc_utilities::SerializeVector(data, buffer, item_serializer);
     }
 
-    std::pair<std::vector<CollisionData>, uint64_t> DeserializeCollisionDataVector(const std::vector<uint8_t>& buffer, const uint64_t current)
+    std::pair<std::vector<CollisionData>, uint64_t> DeserializeCollisionDataVector(
+            const std::vector<uint8_t>& buffer,
+            const uint64_t current)
     {
         const std::function<std::pair<CollisionData, uint64_t>(const std::vector<uint8_t>&, const uint64_t)> item_deserializer = []
                 (const std::vector<uint8_t>& buffer, const uint64_t current)

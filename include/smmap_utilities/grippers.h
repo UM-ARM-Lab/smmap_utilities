@@ -29,6 +29,12 @@ namespace smmap_utilities
     ////////////////////////////////////////////////////////////////////////////
     ////////////////////////////////////////////////////////////////////////////
 
+    typedef std::pair<Eigen::Isometry3d, Eigen::Isometry3d> Pair3dPoses;
+    typedef std::pair<Eigen::Isometry3d, Eigen::Isometry3d> PairGripperPoses;
+
+    typedef std::pair<Eigen::Vector3d, Eigen::Vector3d> Pair3dPositions;
+    typedef std::pair<Eigen::Vector3d, Eigen::Vector3d> PairGripperPositions;
+
     typedef EigenHelpers::VectorIsometry3d AllGrippersSinglePose;
     typedef std::vector<AllGrippersSinglePose> AllGrippersPoseTrajectory;
 
@@ -165,6 +171,12 @@ namespace smmap_utilities
     ////////////////////////////////////////////////////////////////////////////
     // Conversion functions
     ////////////////////////////////////////////////////////////////////////////
+
+    PairGripperPositions ToGripperPositions(
+            const EigenHelpers::VectorIsometry3d& poses);
+
+    PairGripperPositions ToGripperPositions(
+            const PairGripperPoses& poses);
 
     // TODO:
     // # warning "Re-evaluate now this gripper pose delta math is done - remember Ruikun's example where the gripper went the wrong way"
@@ -314,17 +326,45 @@ namespace smmap_utilities
     ////////////////////////////////////////////////////////////////////////////
     ////////////////////////////////////////////////////////////////////////////
 
-    uint64_t SerializeAllGrippersSinglePose(const AllGrippersSinglePose& poses, std::vector<uint8_t>& buffer);
+    uint64_t DeserializePair3dPositions(
+            const Pair3dPositions& positions,
+            std::vector<uint8_t>& buffer);
 
-    std::pair<AllGrippersSinglePose, uint64_t> DeserializeAllGrippersSinglePose(const std::vector<uint8_t>& buffer, const uint64_t current);
+    std::pair<PairGripperPositions, uint64_t> DeserializePair3dPositions(
+            const std::vector<uint8_t>& buffer,
+            const uint64_t current);
 
-    uint64_t SerializeAllGrippersPoseTrajectory(const AllGrippersPoseTrajectory& traj, std::vector<uint8_t>& buffer);
+    uint64_t SerializePair3dPoses(
+            const Pair3dPoses& poses,
+            std::vector<uint8_t>& buffer);
 
-    std::pair<AllGrippersPoseTrajectory, uint64_t> DeserializeAllGrippersPoseTrajectory(const std::vector<uint8_t>& buffer, const uint64_t current);
+    std::pair<Pair3dPoses, uint64_t> DeserializePair3dPoses(
+            const std::vector<uint8_t>& buffer,
+            const uint64_t current);
 
-    uint64_t SerializeCollisionDataVector(const std::vector<CollisionData>& data, std::vector<uint8_t>& buffer);
+    uint64_t SerializeAllGrippersSinglePose(
+            const AllGrippersSinglePose& poses,
+            std::vector<uint8_t>& buffer);
 
-    std::pair<std::vector<CollisionData>, uint64_t> DeserializeCollisionDataVector(const std::vector<uint8_t>& buffer, const uint64_t current);
+    std::pair<AllGrippersSinglePose, uint64_t> DeserializeAllGrippersSinglePose(
+            const std::vector<uint8_t>& buffer,
+            const uint64_t current);
+
+    uint64_t SerializeAllGrippersPoseTrajectory(
+            const AllGrippersPoseTrajectory& traj,
+            std::vector<uint8_t>& buffer);
+
+    std::pair<AllGrippersPoseTrajectory, uint64_t> DeserializeAllGrippersPoseTrajectory(
+            const std::vector<uint8_t>& buffer,
+            const uint64_t current);
+
+    uint64_t SerializeCollisionDataVector(
+            const std::vector<CollisionData>& data,
+            std::vector<uint8_t>& buffer);
+
+    std::pair<std::vector<CollisionData>, uint64_t> DeserializeCollisionDataVector(
+            const std::vector<uint8_t>& buffer,
+            const uint64_t current);
 
     ////////////////////////////////////////////////////////////////////////////
     ////////////////////////////////////////////////////////////////////////////
