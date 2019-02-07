@@ -1076,13 +1076,13 @@ void Visualizer::visualizeAxes(
 
 void Visualizer::publishAsyncMain()
 {
-    const double freq = ROSHelpers::GetParam<double>(*ph_, "async_publish_frequency", 20.0);
+    const auto freq = ROSHelpers::GetParam<double>(*ph_, "async_publish_frequency", 20.0);
     ros::Rate rate(freq);
     while (ros::ok())
     {
         {
             std::lock_guard<std::mutex> lock(markers_mtx_);
-            if (async_markers_.markers.size() > 0)
+            if (!async_markers_.markers.empty())
             {
                 visualization_maker_array_pub_.publish(async_markers_);
             }

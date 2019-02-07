@@ -54,7 +54,7 @@ include_directories(include
     ${NOMAD_INCLUDE_DIRS}
 )
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++0x -flto -O2 -g -Wall -Wextra -Wpedantic -Wconversion")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++0x -flto -O3 -g -Wall -Wextra -Wpedantic -Wconversion")
 
 #############
 ## Library ##
@@ -66,7 +66,6 @@ FILE(GLOB h_SRC "include/${PROJECT_NAME}/*.h")
 FILE(GLOB cpp_SRC "src/*.cpp")
 
 add_custom_target(${PROJECT_NAME}_headers SOURCES ${hpp_SRC} ${h_SRC})
-
 add_library(${PROJECT_NAME} ${cpp_SRC})
 add_dependencies(${PROJECT_NAME} ${catkin_EXPORTED_TARGETS})
 target_link_libraries(${PROJECT_NAME} ${catkin_LIBRARIES} ${GUROBI_LIBRARIES} ${NOMAD_LIBRARIES} ${PYTHON_LIBRARIES})

@@ -388,7 +388,8 @@ namespace smmap_utilities
         return ending_bytes - starting_bytes;
     }
 
-    std::pair<CollisionData, uint64_t> CollisionData::Deserialize(const std::vector<uint8_t>& buffer, const uint64_t current)
+    std::pair<CollisionData, uint64_t> CollisionData::Deserialize(
+            const std::vector<uint8_t>& buffer, const uint64_t current)
     {
         // Make sure there is enough data left
         assert(current + SerializedSize() <= buffer.size());

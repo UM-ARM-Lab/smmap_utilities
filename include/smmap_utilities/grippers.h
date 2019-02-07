@@ -247,7 +247,8 @@ namespace smmap_utilities
 
             uint64_t serialize(std::vector<uint8_t>& buffer) const;
 
-            static std::pair<CollisionData, uint64_t> Deserialize(const std::vector<uint8_t>& buffer, const uint64_t current);
+            static std::pair<CollisionData, uint64_t> Deserialize(
+                    const std::vector<uint8_t>& buffer, const uint64_t current);
 
             bool operator==(const CollisionData& other) const;
     };
