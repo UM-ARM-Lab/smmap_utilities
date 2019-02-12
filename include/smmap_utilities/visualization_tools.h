@@ -71,6 +71,13 @@ namespace smmap
                     const int32_t start_id = 0,
                     const int32_t end_id = 1024) const;
 
+            void visualizePoint(
+                    const std::string& marker_name,
+                    const Eigen::Vector3d& point,
+                    const std_msgs::ColorRGBA& color,
+                    const int32_t id = 1,
+                    const double scale = 0.005) const;
+
             void visualizePoints(
                     const std::string& marker_name,
                     const EigenHelpers::VectorVector3d& points,

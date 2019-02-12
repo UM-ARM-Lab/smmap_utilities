@@ -429,6 +429,20 @@ void Visualizer::deleteObjects(
 
 ////////////////////////////////////////////////////////////////////////////////
 
+void Visualizer::visualizePoint(
+        const std::string& marker_name,
+        const Eigen::Vector3d& point,
+        const std_msgs::ColorRGBA& color,
+        const int32_t id,
+        const double scale) const
+{
+    if (!disable_all_visualizations_)
+    {
+        const EigenHelpers::VectorVector3d points(1, point);
+        visualizePoints(marker_name, points, color, id, scale);
+    }
+}
+
 void Visualizer::visualizePoints(
         const std::string& marker_name,
         const EigenHelpers::VectorVector3d& points,
