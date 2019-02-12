@@ -1,6 +1,6 @@
 #include "smmap_utilities/multiarm_bandits.h"
 
-using namespace smmap_utilities;
+using namespace smmap;
 
 ////////////////////////////////////////////////////////////////////////////////
 

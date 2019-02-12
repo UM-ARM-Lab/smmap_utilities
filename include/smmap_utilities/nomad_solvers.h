@@ -6,7 +6,7 @@
 #include <arc_utilities/eigen_helpers.hpp>
 #include <kinematics_toolbox/kinematics.h>
 
-namespace smmap_utilities
+namespace smmap
 {
     ///////////////////////////////////////////////////////////////////
     // Straight robot DOF

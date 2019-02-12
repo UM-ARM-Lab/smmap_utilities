@@ -11,7 +11,7 @@ using namespace EigenHelpers;
 // Internally used static objects
 ////////////////////////////////////////////////////////////////
 
-GRBEnv& getGRBEnv()
+static GRBEnv& getGRBEnv()
 {
     static GRBEnv env;
     return env;
@@ -23,7 +23,7 @@ GRBEnv& getGRBEnv()
 
 // TODO: this loop is highly inefficient, this ought to be doable in a better way
 // Note that this function assumes that the matrix Q is symmetric
-GRBQuadExpr buildQuadraticTerm(GRBVar* vars, const MatrixXd& Q)
+static GRBQuadExpr buildQuadraticTerm(GRBVar* vars, const MatrixXd& Q)
 {
     GRBQuadExpr expr;
 
@@ -52,7 +52,7 @@ GRBQuadExpr buildQuadraticTerm(GRBVar* vars, const MatrixXd& Q)
 // This is equivalent to [point_a' point_b'] * Q * [point_a' point_b']'
 // where Q is [ I, -I
 //             -I,  I]
-GRBQuadExpr buildDifferencingQuadraticTerm(GRBVar* point_a, GRBVar* point_b, const size_t num_vars_per_point)
+static GRBQuadExpr buildDifferencingQuadraticTerm(GRBVar* point_a, GRBVar* point_b, const size_t num_vars_per_point)
 {
     GRBQuadExpr expr;
 
@@ -68,7 +68,7 @@ GRBQuadExpr buildDifferencingQuadraticTerm(GRBVar* point_a, GRBVar* point_b, con
     return expr;
 }
 
-GRBQuadExpr normSquared(const std::vector<GRBLinExpr>& exprs)
+static GRBQuadExpr normSquared(const std::vector<GRBLinExpr>& exprs)
 {
     GRBQuadExpr vector_norm_squared = 0;
 
@@ -81,7 +81,7 @@ GRBQuadExpr normSquared(const std::vector<GRBLinExpr>& exprs)
     return vector_norm_squared;
 }
 
-GRBQuadExpr normSquared(const std::vector<GRBLinExpr>& exprs, const VectorXd& weights)
+static GRBQuadExpr normSquared(const std::vector<GRBLinExpr>& exprs, const VectorXd& weights)
 {
     assert(exprs.size() == (size_t)weights.rows());
     GRBQuadExpr vector_norm_squared = 0;
@@ -95,7 +95,7 @@ GRBQuadExpr normSquared(const std::vector<GRBLinExpr>& exprs, const VectorXd& we
     return vector_norm_squared;
 }
 
-GRBQuadExpr normSquared(GRBVar* vars, const size_t num_vars)
+static GRBQuadExpr normSquared(GRBVar* vars, const size_t num_vars)
 {
     GRBQuadExpr vector_norm_squared = 0;
 
@@ -108,7 +108,7 @@ GRBQuadExpr normSquared(GRBVar* vars, const size_t num_vars)
     return vector_norm_squared;
 }
 
-std::vector<GRBLinExpr> buildVectorOfExperssions(const MatrixXd& A, GRBVar* vars, const VectorXd& b)
+static std::vector<GRBLinExpr> buildVectorOfExperssions(const MatrixXd& A, GRBVar* vars, const VectorXd& b)
 {
     const ssize_t num_expr = A.rows();
     const ssize_t num_vars = A.cols();
@@ -131,7 +131,7 @@ std::vector<GRBLinExpr> buildVectorOfExperssions(const MatrixXd& A, GRBVar* vars
 ////////////////////////////////////////////////////////////////
 
 // Minimizes || Ax - b || subject to norm constraints on x
-VectorXd smmap_utilities::minSquaredNorm_MaxXNormConstraint(
+VectorXd smmap::minSquaredNorm_MaxXNormConstraint(
         const MatrixXd& A,
         const VectorXd& b,
         const double max_x_norm)
@@ -217,7 +217,7 @@ VectorXd smmap_utilities::minSquaredNorm_MaxXNormConstraint(
 }
 
 // Minimizes || Ax - b ||_w subject to norm constraints on x
-VectorXd smmap_utilities::minSquaredNorm_MaxXNormConstraint(
+VectorXd smmap::minSquaredNorm_MaxXNormConstraint(
         const MatrixXd& A,
         const VectorXd& b,
         const VectorXd& weights,
@@ -307,7 +307,7 @@ VectorXd smmap_utilities::minSquaredNorm_MaxXNormConstraint(
 // Linear constraint terms are of the form C * x <= d
 //
 // If lower bound is passed, upper bound must also be passed.
-VectorXd smmap_utilities::minSquaredNorm_MaxXNormConstraint_LinearConstraints(
+VectorXd smmap::minSquaredNorm_MaxXNormConstraint_LinearConstraints(
         const MatrixXd& A,
         const VectorXd& b,
         const VectorXd& weights,
@@ -448,7 +448,7 @@ VectorXd smmap_utilities::minSquaredNorm_MaxXNormConstraint_LinearConstraints(
 }
 
 // Minimizes || Ax - b ||_w subject to SE3 velocity constraints on x
-VectorXd smmap_utilities::minSquaredNorm_SE3VelocityConstraints(
+VectorXd smmap::minSquaredNorm_SE3VelocityConstraints(
         const MatrixXd& A,
         const VectorXd& b,
         const VectorXd& weights,
@@ -545,7 +545,7 @@ VectorXd smmap_utilities::minSquaredNorm_SE3VelocityConstraints(
 
 // Minimizes || Ax - b ||_w subject to SE3 velocity constraints on x, and linear constraints
 // Linear constraint terms are of the form C * x <= d
-VectorXd smmap_utilities::minSquaredNorm_SE3VelocityConstraints_LinearConstraints(
+VectorXd smmap::minSquaredNorm_SE3VelocityConstraints_LinearConstraints(
         const MatrixXd& A,
         const VectorXd& b,
         const VectorXd& weights,
@@ -687,7 +687,7 @@ VectorXd smmap_utilities::minSquaredNorm_SE3VelocityConstraints_LinearConstraint
 // Every 6 rows of J and every 6 elements of x are treated as independent constraints in this fashion
 //
 // If lower bound is passed, upper bound must also be passed.
-VectorXd smmap_utilities::minSquaredNorm_SE3VelocityConstraints_QuadraticConstraints(
+VectorXd smmap::minSquaredNorm_SE3VelocityConstraints_QuadraticConstraints(
         const MatrixXd& A,
         const VectorXd& b,
         const VectorXd& weights,
@@ -887,7 +887,7 @@ VectorXd smmap_utilities::minSquaredNorm_SE3VelocityConstraints_QuadraticConstra
 // Used to find a point that satisfies the linear constraints above in
 // minSquaredNorm_SE3VelocityConstraints_QuadraticConstraints
 // but discards the quadratic (i.e. max x norm) and SE3 velocity constraints to do it
-VectorXd smmap_utilities::minXNorm_LinearConstraints(
+VectorXd smmap::minXNorm_LinearConstraints(
         const std::vector<RowVectorXd>& linear_constraint_linear_terms,
         const std::vector<double>& linear_constraint_affine_terms,
         const VectorXd& x_weights,
@@ -986,7 +986,7 @@ VectorXd smmap_utilities::minXNorm_LinearConstraints(
 //              || x || <= max_norm
 //
 // Returns the x that minimizes constraint violations, and the minimim constraint violation itself
-std::pair<VectorXd, double> smmap_utilities::minimizeConstraintViolations(
+std::pair<VectorXd, double> smmap::minimizeConstraintViolations(
         const ssize_t num_vars,
         const std::vector<RowVectorXd>& linear_constraint_linear_terms,
         const std::vector<double>& linear_constraint_affine_terms,
@@ -1098,7 +1098,7 @@ std::pair<VectorXd, double> smmap_utilities::minimizeConstraintViolations(
 //              lb <= x
 //                    x <= ub
 //              || x || <= max_norm
-VectorXd smmap_utilities::findClosestValidPoint(
+VectorXd smmap::findClosestValidPoint(
         const VectorXd& starting_point,
         const std::vector<RowVectorXd>& linear_constraint_linear_terms,
         const std::vector<double>& linear_constraint_affine_terms,
@@ -1204,7 +1204,7 @@ VectorXd smmap_utilities::findClosestValidPoint(
 //              lb <= x
 //                    x <= ub
 //              || x || <= max_norm
-VectorXd smmap_utilities::findClosestValidPoint(
+VectorXd smmap::findClosestValidPoint(
         const VectorXd& starting_point,
         const MatrixXd& J,
         const double max_se3_velocity,
@@ -1393,7 +1393,7 @@ VectorXd smmap_utilities::findClosestValidPoint(
 // This is custom designed for R^3 distances, but it could be done generically
 //
 // Variable bound is an extra contraint on each individual variable (not vector), it defines the upper and lower bound
-VectorVector3d smmap_utilities::denoiseWithDistanceConstraints(
+VectorVector3d smmap::denoiseWithDistanceConstraints(
         const VectorVector3d& observations,
         const VectorXd& observation_strength,
         const MatrixXd& distance_sq_constraints,

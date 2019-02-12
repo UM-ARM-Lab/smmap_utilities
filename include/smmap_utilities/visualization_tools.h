@@ -3,13 +3,14 @@
 
 #include <thread>
 #include <mutex>
+#include <atomic>
 
 #include <ros/ros.h>
 #include <visualization_msgs/MarkerArray.h>
 #include <deformable_manipulation_experiment_params/ros_params.hpp>
 #include <arc_utilities/eigen_helpers.hpp>
 
-namespace smmap_utilities
+namespace smmap
 {
     class Visualizer
     {
@@ -31,6 +32,14 @@ namespace smmap_utilities
             static std_msgs::ColorRGBA Olive(const float alpha = 1.0f);
             static std_msgs::ColorRGBA Orange(const float alpha = 1.0f);
 
+            static constexpr auto ROPE_POINTS_SCALE = 0.005;
+            static constexpr auto CLOTH_POINTS_SCALE = 0.005;
+            static constexpr auto GRIPPER_X_SCALE = 0.03;
+            static constexpr auto GRIPPER_Y_SCALE = 0.03;
+            static constexpr auto GRIPPER_Z_SCALE = 0.01;
+            static constexpr auto OBJECT_DELTA_SCALE = 0.001;
+            static constexpr auto TRANSLATION_SCALE = 0.01;
+
         public:
             typedef std::shared_ptr<Visualizer> Ptr;
             typedef std::shared_ptr<const Visualizer> ConstPtr;
@@ -39,6 +48,8 @@ namespace smmap_utilities
                     std::shared_ptr<ros::NodeHandle> nh,
                     std::shared_ptr<ros::NodeHandle> ph,
                     const bool publish_async = false);
+
+            ~Visualizer();
 
             void publish(const visualization_msgs::Marker& marker) const;
 
@@ -102,11 +113,12 @@ namespace smmap_utilities
                     const std_msgs::ColorRGBA& color,
                     const int32_t id = 1) const;
 
-            void visualizeSpheres(const std::string& marker_name,
+            void visualizeSpheres(
+                    const std::string& marker_name,
                     const EigenHelpers::VectorVector3d& points,
                     const std_msgs::ColorRGBA& color,
-                    const int32_t starting_id,
-                    const double& radius) const;
+                    const int32_t id,
+                    const double radius) const;
 
             void visualizeSpheres(const std::string& marker_name,
                     const EigenHelpers::VectorVector3d& points,
@@ -232,6 +244,16 @@ namespace smmap_utilities
 
         private:
 
+            visualization_msgs::Marker createMarker(
+                    const std::string& marker_name,
+                    const EigenHelpers::VectorVector3d& points,
+                    const int32_t id) const;
+
+            visualization_msgs::Marker createMarker(
+                    const std::string& marker_name,
+                    const ObjectPointSet& points,
+                    const int32_t id) const;
+
             void updateMarkerList(const visualization_msgs::Marker& marker) const;
             void publishAsyncMain();
 
@@ -240,6 +262,7 @@ namespace smmap_utilities
 
             const bool publish_async_;
             std::thread publish_thread_;
+            std::atomic<bool> running_async_;
             mutable std::mutex markers_mtx_;
             mutable visualization_msgs::MarkerArray async_markers_;
 

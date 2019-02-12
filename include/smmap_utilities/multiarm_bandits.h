@@ -12,7 +12,7 @@
 #include <arc_utilities/pretty_print.hpp>
 #include <arc_utilities/eigen_helpers.hpp>
 
-namespace smmap_utilities
+namespace smmap
 {
     class MABBase
     {

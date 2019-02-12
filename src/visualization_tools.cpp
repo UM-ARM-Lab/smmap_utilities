@@ -5,7 +5,10 @@
 #include <arc_utilities/eigen_helpers_conversions.hpp>
 #include <arc_utilities/geometry_msgs_builders.hpp>
 
-using namespace smmap_utilities;
+using namespace smmap;
+namespace vm = visualization_msgs;
+namespace au = arc_utilities;
+namespace ehc = EigenHelpersConversions;
 
 ////////////////////////////////////////////////////////////////////////////////
 //
@@ -197,17 +200,18 @@ Visualizer::Visualizer(
     : nh_(nh)
     , ph_(ph)
     , publish_async_(publish_async)
-    , disable_all_visualizations_(smmap::GetDisableAllVisualizations(*ph_))
-    , clear_markers_srv_(nh_->serviceClient<std_srvs::Empty>(smmap::GetClearVisualizationsTopic(*nh_), true))
-    , world_frame_name_(smmap::GetWorldFrameName())
-    , gripper_apperture_(smmap::GetGripperApperture(*nh_))
+    , running_async_(false)
+    , disable_all_visualizations_(GetDisableAllVisualizations(*ph_))
+    , clear_markers_srv_(nh_->serviceClient<std_srvs::Empty>(GetClearVisualizationsTopic(*nh_), true))
+    , world_frame_name_(GetWorldFrameName())
+    , gripper_apperture_(GetGripperApperture(*nh_))
 {
     InitializeStandardColors();
     if (!disable_all_visualizations_)
     {
         clear_markers_srv_.waitForExistence();
-        visualization_marker_pub_ = nh_->advertise<visualization_msgs::Marker>(smmap::GetVisualizationMarkerTopic(*nh_), 256);
-        visualization_maker_array_pub_ = nh_->advertise<visualization_msgs::MarkerArray>(smmap::GetVisualizationMarkerArrayTopic(*nh_), 1);
+        visualization_marker_pub_ = nh_->advertise<vm::Marker>(GetVisualizationMarkerTopic(*nh_), 256);
+        visualization_maker_array_pub_ = nh_->advertise<vm::MarkerArray>(GetVisualizationMarkerArrayTopic(*nh_), 1);
 
         if (publish_async_)
         {
@@ -217,28 +221,16 @@ Visualizer::Visualizer(
     }
 }
 
-// Shall only be used if the markers_mtx has already been acquired
-void Visualizer::updateMarkerList(const visualization_msgs::Marker& marker) const
+Visualizer::~Visualizer()
 {
-    bool marker_found = false;
-    for (size_t idx = 0; idx < async_markers_.markers.size(); ++idx)
+    if (publish_async_)
     {
-        visualization_msgs::Marker& old_marker = async_markers_.markers[idx];
-        if (old_marker.id == marker.id && old_marker.ns == marker.ns)
-        {
-            old_marker = marker;
-            marker_found = true;
-            break;
-        }
-    }
-
-    if (!marker_found)
-    {
-        async_markers_.markers.push_back(marker);
+        running_async_ = false;
+        publish_thread_.join();
     }
 }
 
-void Visualizer::publish(const visualization_msgs::Marker& marker) const
+void Visualizer::publish(const vm::Marker& marker) const
 {
     if (!disable_all_visualizations_)
     {
@@ -254,7 +246,7 @@ void Visualizer::publish(const visualization_msgs::Marker& marker) const
     }
 }
 
-void Visualizer::publish(const visualization_msgs::MarkerArray& marker_array) const
+void Visualizer::publish(const vm::MarkerArray& marker_array) const
 {
     if (!disable_all_visualizations_)
     {
@@ -307,6 +299,8 @@ void Visualizer::forcePublishNow(const double last_delay) const
     }
 }
 
+////////////////////////////////////////////////////////////////////////////////
+
 void Visualizer::clearVisualizationsBullet()
 {
     if (!disable_all_visualizations_)
@@ -315,7 +309,7 @@ void Visualizer::clearVisualizationsBullet()
         while (!clear_markers_srv_.call(srv_data))
         {
             ROS_WARN_THROTTLE_NAMED(1.0, "visualizer", "Clear visualization data failed, reconnecting");
-            clear_markers_srv_ = nh_->serviceClient<std_srvs::Empty>(smmap::GetClearVisualizationsTopic(*nh_), true);
+            clear_markers_srv_ = nh_->serviceClient<std_srvs::Empty>(GetClearVisualizationsTopic(*nh_), true);
             clear_markers_srv_.waitForExistence();
         }
     }
@@ -330,8 +324,8 @@ void Visualizer::deleteAll() const
             std::lock_guard<std::mutex> lock(markers_mtx_);
             for (size_t idx = 0; idx < async_markers_.markers.size(); ++idx)
             {
-                visualization_msgs::Marker& marker = async_markers_.markers[idx];
-                marker.action = visualization_msgs::Marker::DELETE;
+                vm::Marker& marker = async_markers_.markers[idx];
+                marker.action = vm::Marker::DELETE;
                 marker.header.stamp = ros::Time::now();
                 marker.lifetime = ros::Duration(0.1);
                 marker.points.clear();
@@ -368,9 +362,9 @@ void Visualizer::deleteObjects(
 {
     if (!disable_all_visualizations_)
     {
-        visualization_msgs::Marker marker;
+        vm::Marker marker;
         marker.header.frame_id = world_frame_name_;
-        marker.action = visualization_msgs::Marker::DELETE;
+        marker.action = vm::Marker::DELETE;
         marker.ns = marker_name;
         marker.lifetime = ros::Duration(1.0);
 
@@ -382,7 +376,7 @@ void Visualizer::deleteObjects(
             std::vector<size_t> markers_to_delete;
             for (size_t idx = 0; idx < async_markers_.markers.size(); ++idx)
             {
-                const visualization_msgs::Marker& marker = async_markers_.markers[idx];
+                const vm::Marker& marker = async_markers_.markers[idx];
                 if (marker.ns == marker_name &&
                     start_id <= marker.id &&
                     marker.id < end_id)
@@ -392,7 +386,7 @@ void Visualizer::deleteObjects(
             }
 
             // Delete the flaged markers
-            visualization_msgs::MarkerArray new_markers;
+            vm::MarkerArray new_markers;
             new_markers.markers.reserve(async_markers_.markers.size() + end_id - start_id);
             for (size_t idx = 0; idx < async_markers_.markers.size(); ++idx)
             {
@@ -433,6 +427,8 @@ void Visualizer::deleteObjects(
     }
 }
 
+////////////////////////////////////////////////////////////////////////////////
+
 void Visualizer::visualizePoints(
         const std::string& marker_name,
         const EigenHelpers::VectorVector3d& points,
@@ -442,8 +438,14 @@ void Visualizer::visualizePoints(
 {
     if (!disable_all_visualizations_)
     {
-        const std::vector<std_msgs::ColorRGBA> colors(points.size(), color);
-        visualizePoints(marker_name, points, colors, id, scale);
+        vm::Marker marker = createMarker(marker_name, points, id);
+
+        marker.type = vm::Marker::POINTS;
+        marker.scale.x = scale;
+        marker.scale.y = scale;
+        marker.color = color;
+
+        publish(marker);
     }
 }
 
@@ -456,22 +458,13 @@ void Visualizer::visualizePoints(
 {
     if (!disable_all_visualizations_)
     {
-        visualization_msgs::Marker marker;
+        vm::Marker marker = createMarker(marker_name, points, id);
 
-        marker.header.frame_id = world_frame_name_;
-
-        marker.type = visualization_msgs::Marker::POINTS;
-        marker.ns = marker_name;
-        marker.id = id;
+        marker.type = vm::Marker::POINTS;
         marker.scale.x = scale;
         marker.scale.y = scale;
-        marker.points = EigenHelpersConversions::VectorEigenVector3dToVectorGeometryPoint(points);
         marker.colors = colors;
 
-        // Assumes that all non specified values are 0.0
-        marker.pose.orientation.w = 1.0;
-
-        marker.header.stamp = ros::Time::now();
         publish(marker);
     }
 }
@@ -485,8 +478,14 @@ void Visualizer::visualizePoints(
 {
     if (!disable_all_visualizations_)
     {
-        const std::vector<std_msgs::ColorRGBA> colors(points.size(), color);
-        visualizePoints(marker_name, points, colors, id, scale);
+        vm::Marker marker = createMarker(marker_name, points, id);
+
+        marker.type = vm::Marker::POINTS;
+        marker.scale.x = scale;
+        marker.scale.y = scale;
+        marker.color = color;
+
+        publish(marker);
     }
 }
 
@@ -499,22 +498,13 @@ void Visualizer::visualizePoints(
 {
     if (!disable_all_visualizations_)
     {
-        visualization_msgs::Marker marker;
+        vm::Marker marker = createMarker(marker_name, points, id);
 
-        marker.header.frame_id = world_frame_name_;
-
-        marker.type = visualization_msgs::Marker::POINTS;
-        marker.ns = marker_name;
-        marker.id = id;
+        marker.type = vm::Marker::POINTS;
         marker.scale.x = scale;
         marker.scale.y = scale;
-        marker.points = EigenHelpersConversions::EigenMatrix3XdToVectorGeometryPoint(points);
         marker.colors = colors;
 
-        // Assumes that all non specified values are 0.0
-        marker.pose.orientation.w = 1.0;
-
-        marker.header.stamp = ros::Time::now();
         publish(marker);
     }
 }
@@ -528,21 +518,12 @@ void Visualizer::visualizeCubes(
 {
     if (!disable_all_visualizations_)
     {
-        visualization_msgs::Marker marker;
+        vm::Marker marker = createMarker(marker_name, points, id);
 
-        marker.header.frame_id = world_frame_name_;
-
-        marker.type = visualization_msgs::Marker::CUBE_LIST;
-        marker.ns = marker_name;
-        marker.id = id;
-        marker.scale = EigenHelpersConversions::EigenVector3dToGeometryVector3(scale);
-        marker.points = EigenHelpersConversions::VectorEigenVector3dToVectorGeometryPoint(points);
+        marker.type = vm::Marker::CUBE_LIST;
+        marker.scale = ehc::EigenVector3dToGeometryVector3(scale);
         marker.colors = colors;
 
-        // Assumes that all non specified values are 0.0
-        marker.pose.orientation.w = 1.0;
-
-        marker.header.stamp = ros::Time::now();
         publish(marker);
     }
 }
@@ -556,8 +537,13 @@ void Visualizer::visualizeCubes(
 {
     if (!disable_all_visualizations_)
     {
-        const std::vector<std_msgs::ColorRGBA> colors(points.size(), color);
-        visualizeCubes(marker_name, points, scale, colors, id);
+        vm::Marker marker = createMarker(marker_name, points, id);
+
+        marker.type = vm::Marker::CUBE_LIST;
+        marker.scale = ehc::EigenVector3dToGeometryVector3(scale);
+        marker.color = color;
+
+        publish(marker);
     }
 }
 
@@ -565,14 +551,18 @@ void Visualizer::visualizeSpheres(
         const std::string& marker_name,
         const EigenHelpers::VectorVector3d& points,
         const std_msgs::ColorRGBA& color,
-        const int32_t starting_id,
-        const double& radius) const
+        const int32_t id,
+        const double radius) const
 {
     if (!disable_all_visualizations_)
     {
-        const std::vector<std_msgs::ColorRGBA> colors(points.size(), color);
-        const std::vector<double> radiuses(points.size(), radius);
-        visualizeSpheres(marker_name, points, colors, starting_id, radiuses);
+        vm::Marker marker = createMarker(marker_name, points, id);
+
+        marker.type = vm::Marker::SPHERE_LIST;
+        marker.scale = au::MakeVector3(radius * 2.0, radius * 2.0, radius * 2.0);
+        marker.color = color;
+
+        publish(marker);
     }
 }
 
@@ -604,19 +594,19 @@ void Visualizer::visualizeSpheres(
             ROS_ERROR_NAMED("visualizer", "Invalid sphere list, need number of points and radiuses to match");
         }
 
-        visualization_msgs::Marker marker;
+        vm::Marker marker;
         marker.header.frame_id = world_frame_name_;
         marker.header.stamp = ros::Time::now();
 
         for (size_t idx = 0; idx < points.size(); ++idx)
         {
-            marker.type = visualization_msgs::Marker::SPHERE;
+            marker.type = vm::Marker::SPHERE;
             marker.ns = marker_name;
             marker.id = starting_id + (int32_t)idx;
             marker.scale.x = radiuses[idx] * 2.0;
             marker.scale.y = radiuses[idx] * 2.0;
             marker.scale.z = radiuses[idx] * 2.0;
-            marker.pose.position = EigenHelpersConversions::EigenVector3dToGeometryPoint(points[idx]);
+            marker.pose.position = ehc::EigenVector3dToGeometryPoint(points[idx]);
             marker.pose.orientation.x = 0.0;
             marker.pose.orientation.y = 0.0;
             marker.pose.orientation.z = 0.0;
@@ -636,8 +626,17 @@ void Visualizer::visualizeRope(
 {
     if (!disable_all_visualizations_)
     {
-        const std::vector<std_msgs::ColorRGBA> colors((size_t)rope.cols(), color);
-        visualizeRope(marker_name, rope, colors, id);
+        vm::Marker marker = createMarker(marker_name, rope, id);
+
+        marker.type = vm::Marker::POINTS;
+        marker.scale.x = ROPE_POINTS_SCALE;
+        marker.scale.y = ROPE_POINTS_SCALE;
+        marker.color = color;
+
+        publish(marker);
+
+        marker.type = vm::Marker::LINE_STRIP;
+        publish(marker);
     }
 }
 
@@ -649,36 +648,16 @@ void Visualizer::visualizeRope(
 {
     if (!disable_all_visualizations_)
     {
-        visualization_msgs::Marker marker;
+        vm::Marker marker = createMarker(marker_name, rope, id);
 
-        marker.header.frame_id = world_frame_name_;
-
-        marker.type = visualization_msgs::Marker::LINE_STRIP;
-        marker.ns = marker_name;
-        marker.id = id;
-        marker.scale.x = 0.005;
-        marker.points = EigenHelpersConversions::EigenMatrix3XdToVectorGeometryPoint(rope);
+        marker.type = vm::Marker::POINTS;
+        marker.scale.x = ROPE_POINTS_SCALE;
+        marker.scale.y = ROPE_POINTS_SCALE;
         marker.colors = colors;
 
-        // Assumes that all non specified values are 0.0
-        marker.pose.orientation.w = 1.0;
+        publish(marker);
 
-        marker.header.stamp = ros::Time::now();
-//        publish(marker);
-
-        marker.type = visualization_msgs::Marker::POINTS;
-//        marker.type = visualization_msgs::Marker::SPHERE;
-//        marker.id = id + 1;
-//        const double scale = 0.015;
-        const double scale = 0.005;
-        marker.scale.x = scale;
-        marker.scale.y = scale;
-        marker.scale.z = scale;
-
-        // Assumes that all non specified values are 0.0
-        marker.pose.orientation.w = 1.0;
-
-        marker.header.stamp = ros::Time::now();
+        marker.type = vm::Marker::LINE_STRIP;
         publish(marker);
     }
 }
@@ -691,8 +670,7 @@ void Visualizer::visualizeCloth(
 {
     if (!disable_all_visualizations_)
     {
-        const std::vector<std_msgs::ColorRGBA> colors((size_t)cloth.cols(), color);
-        visualizeCloth(marker_name, cloth, colors, id);
+        visualizePoints(marker_name, cloth, color, id, CLOTH_POINTS_SCALE);
     }
 }
 
@@ -704,23 +682,7 @@ void Visualizer::visualizeCloth(
 {
     if (!disable_all_visualizations_)
     {
-        visualization_msgs::Marker marker;
-
-        marker.header.frame_id = world_frame_name_;
-
-        marker.type = visualization_msgs::Marker::POINTS;
-        marker.ns = marker_name;
-        marker.id = id;
-        marker.scale.x = 0.005;
-        marker.scale.y = 0.005;
-        marker.points = EigenHelpersConversions::EigenMatrix3XdToVectorGeometryPoint(cloth);
-        marker.colors = colors;
-
-        // Assumes that all non specified values are 0.0
-        marker.pose.orientation.w = 1.0;
-
-        marker.header.stamp = ros::Time::now();
-        publish(marker);
+        visualizePoints(marker_name, cloth, colors, id, CLOTH_POINTS_SCALE);
     }
 }
 
@@ -732,27 +694,22 @@ void Visualizer::visualizeGripper(
 {
     if (!disable_all_visualizations_)
     {
-        visualization_msgs::Marker marker;
+        vm::Marker marker;
 
         marker.header.frame_id = world_frame_name_;
         marker.header.stamp = ros::Time::now();
 
-        marker.type = visualization_msgs::Marker::CUBE_LIST;
+        marker.type = vm::Marker::CUBE_LIST;
         marker.ns = marker_name;
         marker.id = id;
-        marker.scale.x = 0.03;
-        marker.scale.y = 0.03;
-        marker.scale.z = 0.01;
-        marker.pose = EigenHelpersConversions::EigenIsometry3dToGeometryPose(eigen_pose);
-        marker.colors = {color, color};
+        marker.scale.x = GRIPPER_X_SCALE;
+        marker.scale.y = GRIPPER_Y_SCALE;
+        marker.scale.z = GRIPPER_Z_SCALE;
+        marker.pose = ehc::EigenIsometry3dToGeometryPose(eigen_pose);
+        marker.color = color;
 
-        geometry_msgs::Point p;
-        p.x = 0.0;
-        p.y = 0.0;
-        p.z = gripper_apperture_ * 0.5;
-        marker.points.push_back(p);
-        p.z = -gripper_apperture_ * 0.5;
-        marker.points.push_back(p);
+        marker.points.push_back(au::MakePoint(0.0, 0.0, gripper_apperture_ * 0.5));
+        marker.points.push_back(au::MakePoint(0.0, 0.0, -gripper_apperture_ * 0.5));
 
         publish(marker);
     }
@@ -766,9 +723,9 @@ void Visualizer::visualizeGrippers(
 {
     if (!disable_all_visualizations_)
     {
-        for (size_t gripper_ind = 0; gripper_ind < eigen_poses.size(); ++gripper_ind)
+        for (int32_t idx = 0; idx < (int32_t)eigen_poses.size(); ++idx)
         {
-            visualizeGripper(marker_name, eigen_poses[gripper_ind], color, id + (int32_t)gripper_ind);
+            visualizeGripper(marker_name, eigen_poses[idx], color, id + idx);
         }
     }
 }
@@ -782,28 +739,26 @@ void Visualizer::visualizeObjectDelta(
 {
     if (!disable_all_visualizations_)
     {
-        visualization_msgs::Marker marker;
+        vm::Marker marker;
 
         marker.header.frame_id = world_frame_name_;
+        marker.header.stamp = ros::Time::now();
 
-        marker.type = visualization_msgs::Marker::LINE_LIST;
+        marker.type = vm::Marker::LINE_LIST;
         marker.ns = marker_name;
         marker.id = id;
-        marker.scale.x = 0.001;
+        marker.scale.x = OBJECT_DELTA_SCALE;
         marker.points.reserve((size_t)current.cols() * 2);
-        marker.colors.reserve((size_t)current.cols() * 2);
         for (ssize_t col = 0; col < current.cols(); col++)
         {
-            marker.points.push_back(EigenHelpersConversions::EigenVector3dToGeometryPoint(current.col(col)));
-            marker.points.push_back(EigenHelpersConversions::EigenVector3dToGeometryPoint(desired.col(col)));
-            marker.colors.push_back(color);
-            marker.colors.push_back(color);
+            marker.points.push_back(ehc::EigenVector3dToGeometryPoint(current.col(col)));
+            marker.points.push_back(ehc::EigenVector3dToGeometryPoint(desired.col(col)));
         }
+        marker.color = color;
 
         // Assumes that all non specified values are 0.0
         marker.pose.orientation.w = 1.0;
 
-        marker.header.stamp = ros::Time::now();
         publish(marker);
     }
 }
@@ -817,23 +772,22 @@ void Visualizer::visualizeTranslation(
 {
     if (!disable_all_visualizations_)
     {
-        visualization_msgs::Marker marker;
+        vm::Marker marker;
 
         marker.header.frame_id = world_frame_name_;
+        marker.header.stamp = ros::Time::now();
 
-        marker.type = visualization_msgs::Marker::LINE_STRIP;
+        marker.type = vm::Marker::LINE_STRIP;
         marker.ns = marker_name;
         marker.id = id;
-        marker.scale.x = 0.01;
+        marker.scale.x = TRANSLATION_SCALE;
         marker.points.push_back(start);
         marker.points.push_back(end);
-        marker.colors.push_back(color);
-        marker.colors.push_back(color);
+        marker.color = color;
 
         // Assumes that all non specified values are 0.0
         marker.pose.orientation.w = 1.0;
 
-        marker.header.stamp = ros::Time::now();
         publish(marker);
     }
 }
@@ -849,8 +803,8 @@ void Visualizer::visualizeTranslation(
     {
         visualizeTranslation(
                     marker_name,
-                    EigenHelpersConversions::EigenVector3dToGeometryPoint(start),
-                    EigenHelpersConversions::EigenVector3dToGeometryPoint(end),
+                    ehc::EigenVector3dToGeometryPoint(start),
+                    ehc::EigenVector3dToGeometryPoint(end),
                     color,
                     id);
     }
@@ -888,18 +842,18 @@ void Visualizer::visualizeArrows(
     {
         assert(start.size() == end.size());
 
-        visualization_msgs::MarkerArray msg;
+        vm::MarkerArray msg;
         msg.markers.reserve(start.size());
 
-        visualization_msgs::Marker marker;
+        vm::Marker marker;
         marker.header.frame_id = world_frame_name_;
         marker.header.stamp = ros::Time::now();
 
         // Assumes that all non specified values are 0.0
         marker.pose.orientation.w = 1.0;
 
-        marker.type = visualization_msgs::Marker::ARROW;
-        marker.action = visualization_msgs::Marker::ADD;
+        marker.type = vm::Marker::ARROW;
+        marker.action = vm::Marker::ADD;
         marker.ns = marker_name;
         marker.scale.x = scale_x;
         marker.scale.y = scale_y;
@@ -911,8 +865,8 @@ void Visualizer::visualizeArrows(
             marker.id = start_id + (int32_t)ind;
 
             marker.points = {
-                EigenHelpersConversions::EigenVector3dToGeometryPoint(start[ind]),
-                EigenHelpersConversions::EigenVector3dToGeometryPoint(end[ind])};
+                ehc::EigenVector3dToGeometryPoint(start[ind]),
+                ehc::EigenVector3dToGeometryPoint(end[ind])};
 
             msg.markers.push_back(marker);
         }
@@ -933,19 +887,19 @@ void Visualizer::visualizeLines(
     {
         assert(start.size() == end.size());
 
-        visualization_msgs::Marker marker;
+        vm::Marker marker;
 
         marker.header.frame_id = world_frame_name_;
 
-        marker.type = visualization_msgs::Marker::LINE_LIST;
+        marker.type = vm::Marker::LINE_LIST;
         marker.ns = marker_name;
         marker.id = id;
         marker.scale.x = scale;
 
         for (size_t ind = 0; ind < start.size(); ind++)
         {
-            marker.points.push_back(EigenHelpersConversions::EigenVector3dToGeometryPoint(start[ind]));
-            marker.points.push_back(EigenHelpersConversions::EigenVector3dToGeometryPoint(end[ind]));
+            marker.points.push_back(ehc::EigenVector3dToGeometryPoint(start[ind]));
+            marker.points.push_back(ehc::EigenVector3dToGeometryPoint(end[ind]));
             marker.colors.push_back(color);
             marker.colors.push_back(color);
         }
@@ -969,19 +923,19 @@ void Visualizer::visualizeLines(
     assert(start.size() == end.size());
     assert(start.size() == colors.size());
 
-    visualization_msgs::Marker marker;
+    vm::Marker marker;
 
     marker.header.frame_id = world_frame_name_;
 
-    marker.type = visualization_msgs::Marker::LINE_LIST;
+    marker.type = vm::Marker::LINE_LIST;
     marker.ns = marker_name;
     marker.id = id;
     marker.scale.x = scale;
 
     for (size_t ind = 0; ind < start.size(); ind++)
     {
-        marker.points.push_back(EigenHelpersConversions::EigenVector3dToGeometryPoint(start[ind]));
-        marker.points.push_back(EigenHelpersConversions::EigenVector3dToGeometryPoint(end[ind]));
+        marker.points.push_back(ehc::EigenVector3dToGeometryPoint(start[ind]));
+        marker.points.push_back(ehc::EigenVector3dToGeometryPoint(end[ind]));
         marker.colors.push_back(colors[ind]);
         marker.colors.push_back(colors[ind]);
     }
@@ -1002,16 +956,16 @@ void Visualizer::visualizeLineStrip(
 {
     if (!disable_all_visualizations_)
     {
-        visualization_msgs::Marker marker;
+        vm::Marker marker;
 
         marker.header.frame_id = world_frame_name_;
 
-        marker.type = visualization_msgs::Marker::LINE_STRIP;
+        marker.type = vm::Marker::LINE_STRIP;
         marker.ns = marker_name;
         marker.id = id;
         marker.scale.x = scale;
 
-        marker.points = EigenHelpersConversions::VectorEigenVector3dToVectorGeometryPoint(point_sequence);
+        marker.points = ehc::VectorEigenVector3dToVectorGeometryPoint(point_sequence);
         marker.colors = std::vector<std_msgs::ColorRGBA>(marker.points.size(), color);
 
         // Assumes that all non specified values are 0.0
@@ -1043,28 +997,28 @@ void Visualizer::visualizeAxes(
 {
     if (!disable_all_visualizations_)
     {
-        visualization_msgs::Marker marker;
+        vm::Marker marker;
         marker.header.frame_id = world_frame_name_;
 
-        marker.type = visualization_msgs::Marker::LINE_LIST;
+        marker.type = vm::Marker::LINE_LIST;
         marker.ns = marker_name;
         marker.id = id;
         marker.scale.x = thickness;
 
-        marker.pose = EigenHelpersConversions::EigenIsometry3dToGeometryPose(axes);
+        marker.pose = ehc::EigenIsometry3dToGeometryPose(axes);
         // X-axis
-        marker.points.push_back(arc_utilities::MakePoint(0.0, 0.0, 0.0));
-        marker.points.push_back(arc_utilities::MakePoint(length, 0.0, 0.0));
+        marker.points.push_back(au::MakePoint(0.0, 0.0, 0.0));
+        marker.points.push_back(au::MakePoint(length, 0.0, 0.0));
         marker.colors.push_back(Red());
         marker.colors.push_back(Red());
         // Y-axis
-        marker.points.push_back(arc_utilities::MakePoint(0.0, 0.0, 0.0));
-        marker.points.push_back(arc_utilities::MakePoint(0.0, length, 0.0));
+        marker.points.push_back(au::MakePoint(0.0, 0.0, 0.0));
+        marker.points.push_back(au::MakePoint(0.0, length, 0.0));
         marker.colors.push_back(Green());
         marker.colors.push_back(Green());
         // Z-axis
-        marker.points.push_back(arc_utilities::MakePoint(0.0, 0.0, 0.0));
-        marker.points.push_back(arc_utilities::MakePoint(0.0, 0.0, length));
+        marker.points.push_back(au::MakePoint(0.0, 0.0, 0.0));
+        marker.points.push_back(au::MakePoint(0.0, 0.0, length));
         marker.colors.push_back(Blue());
         marker.colors.push_back(Blue());
 
@@ -1073,12 +1027,79 @@ void Visualizer::visualizeAxes(
     }
 }
 
+////////////////////////////////////////////////////////////////////////////////
+
+vm::Marker Visualizer::createMarker(
+        const std::string& marker_name,
+        const EigenHelpers::VectorVector3d& points,
+        const int32_t id) const
+{
+    vm::Marker marker;
+
+    marker.header.frame_id = world_frame_name_;
+    marker.header.stamp = ros::Time::now();
+
+    marker.type = vm::Marker::POINTS;
+    marker.ns = marker_name;
+    marker.id = id;
+    marker.points = ehc::VectorEigenVector3dToVectorGeometryPoint(points);
+
+    // Assumes that all non specified values are 0.0
+    marker.pose.orientation.w = 1.0;
+
+    return marker;
+}
+
+vm::Marker Visualizer::createMarker(
+        const std::string& marker_name,
+        const ObjectPointSet& points,
+        const int32_t id) const
+{
+    vm::Marker marker;
+
+    marker.header.frame_id = world_frame_name_;
+    marker.header.stamp = ros::Time::now();
+
+    marker.type = vm::Marker::POINTS;
+    marker.ns = marker_name;
+    marker.id = id;
+    marker.points = ehc::EigenMatrix3XdToVectorGeometryPoint(points);
+
+    // Assumes that all non specified values are 0.0
+    marker.pose.orientation.w = 1.0;
+
+    return marker;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+// Shall only be used if the markers_mtx has already been acquired
+void Visualizer::updateMarkerList(const vm::Marker& marker) const
+{
+    bool marker_found = false;
+    for (size_t idx = 0; idx < async_markers_.markers.size(); ++idx)
+    {
+        vm::Marker& old_marker = async_markers_.markers[idx];
+        if (old_marker.id == marker.id && old_marker.ns == marker.ns)
+        {
+            old_marker = marker;
+            marker_found = true;
+            break;
+        }
+    }
+
+    if (!marker_found)
+    {
+        async_markers_.markers.push_back(marker);
+    }
+}
 
 void Visualizer::publishAsyncMain()
 {
-    const auto freq = ROSHelpers::GetParam<double>(*ph_, "async_publish_frequency", 20.0);
+    running_async_ = true;
+    const auto freq = ROSHelpers::GetParam<double>(*ph_, "async_publish_frequency", 5.0);
     ros::Rate rate(freq);
-    while (ros::ok())
+    while (running_async_ && ros::ok())
     {
         {
             std::lock_guard<std::mutex> lock(markers_mtx_);

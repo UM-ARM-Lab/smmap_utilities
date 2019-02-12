@@ -3,7 +3,7 @@
 #include <iostream>
 #include <arc_utilities/arc_helpers.hpp>
 
-namespace smmap_utilities
+namespace smmap
 {
     ///////////////////////////////////////////////////////////////////
     // Straight robot DOF

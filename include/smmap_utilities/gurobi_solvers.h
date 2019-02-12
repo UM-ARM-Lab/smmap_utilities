@@ -4,7 +4,7 @@
 #include <Eigen/Dense>
 #include <arc_utilities/eigen_helpers.hpp>
 
-namespace smmap_utilities
+namespace smmap
 {
     Eigen::VectorXd minSquaredNorm_MaxXNormConstraint(
             const Eigen::MatrixXd& A,

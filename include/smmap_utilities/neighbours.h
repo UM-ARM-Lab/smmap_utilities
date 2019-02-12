@@ -4,7 +4,7 @@
 #include <sys/types.h>
 #include <vector>
 
-namespace smmap_utilities
+namespace smmap
 {
     class LineNeighbours
     {

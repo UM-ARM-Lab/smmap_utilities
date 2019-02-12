@@ -18,9 +18,8 @@
 #pragma message "SE(3) velocity weight hard coded here"
 static constexpr double GRIPPER_VELOCITY_ROTATION_WEIGHT = 1.0/20.0;
 
-namespace smmap_utilities
+namespace smmap
 {
-
     typedef Eigen::Matrix3Xd ObjectPointSet;
 
     ////////////////////////////////////////////////////////////////////////////
