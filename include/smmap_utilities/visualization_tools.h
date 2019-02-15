@@ -31,6 +31,7 @@ namespace smmap
             static std_msgs::ColorRGBA Coral(const float alpha = 1.0f);
             static std_msgs::ColorRGBA Olive(const float alpha = 1.0f);
             static std_msgs::ColorRGBA Orange(const float alpha = 1.0f);
+            static std_msgs::ColorRGBA Seafoam(const float alpha = 1.0f);
 
             static constexpr auto ROPE_POINTS_SCALE = 0.005;
             static constexpr auto CLOTH_POINTS_SCALE = 0.005;
@@ -64,8 +65,8 @@ namespace smmap
             // Converts all markers in the async publishing list to "delete" actions
             void deleteAll() const;
 
-            // Publishes markers in namespace marker_name, with ids in the half close range [start_id, end_id)
-            // with the delete flag set
+            // Publishes markers in namespace marker_name, with ids in the half
+            // closed ranged [start_id, end_id) with the delete flag set
             void deleteObjects(
                     const std::string& marker_name,
                     const int32_t start_id = 0,
@@ -295,6 +296,7 @@ namespace smmap
             static std_msgs::ColorRGBA coral_;
             static std_msgs::ColorRGBA olive_;
             static std_msgs::ColorRGBA orange_;
+            static std_msgs::ColorRGBA seafoam_;
     };
 }
 

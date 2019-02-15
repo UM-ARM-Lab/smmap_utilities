@@ -15,12 +15,11 @@
 #include <deformable_manipulation_experiment_params/ros_params.hpp>
 #include <deformable_manipulation_msgs/messages.h>
 
-#pragma message "SE(3) velocity weight hard coded here"
-static constexpr double GRIPPER_VELOCITY_ROTATION_WEIGHT = 1.0/20.0;
-
 namespace smmap
 {
     typedef Eigen::Matrix3Xd ObjectPointSet;
+    #pragma message "SE(3) velocity weight hard coded here"
+    static constexpr double GRIPPER_VELOCITY_ROTATION_WEIGHT = 1.0/20.0;
 
     ////////////////////////////////////////////////////////////////////////////
     ////////////////////////////////////////////////////////////////////////////

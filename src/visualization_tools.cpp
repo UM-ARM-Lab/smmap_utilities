@@ -27,6 +27,7 @@ std_msgs::ColorRGBA Visualizer::silver_;
 std_msgs::ColorRGBA Visualizer::coral_;
 std_msgs::ColorRGBA Visualizer::olive_;
 std_msgs::ColorRGBA Visualizer::orange_;
+std_msgs::ColorRGBA Visualizer::seafoam_;
 
 void Visualizer::InitializeStandardColors()
 {
@@ -89,6 +90,11 @@ void Visualizer::InitializeStandardColors()
     orange_.g = 0.2f;
     orange_.b = 0.2f;
     orange_.a = 1.0f;
+
+    seafoam_.r = 112.f/255.f;
+    seafoam_.g = 235.f/255.f;
+    seafoam_.b = 204.f/255.f;
+    seafoam_.a = 1.0f;
 
     standard_colors_initialized_ = true;
 }
@@ -185,6 +191,14 @@ std_msgs::ColorRGBA Visualizer::Orange(const float alpha)
 {
     assert(standard_colors_initialized_);
     auto color = orange_;
+    color.a = alpha;
+    return color;
+}
+
+std_msgs::ColorRGBA Visualizer::Seafoam(const float alpha)
+{
+    assert(standard_colors_initialized_);
+    auto color = seafoam_;
     color.a = alpha;
     return color;
 }
@@ -330,6 +344,8 @@ void Visualizer::deleteAll() const
                 marker.lifetime = ros::Duration(0.1);
                 marker.points.clear();
                 marker.colors.clear();
+                marker.text = "";
+                marker.mesh_resource = "";
             }
         }
         else
