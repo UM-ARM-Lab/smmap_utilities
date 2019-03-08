@@ -133,7 +133,6 @@ namespace smmap
             const long node_index,
             const Eigen::MatrixXd& object_initial_node_distance);
 
-
     // Return both min distance and grasped node index
     std::pair<double, long> GetMinimumDistanceIndexToGripper(
             const std::vector<long>& gripper_indices,
