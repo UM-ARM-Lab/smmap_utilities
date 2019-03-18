@@ -54,7 +54,7 @@ include_directories(include
     ${NOMAD_INCLUDE_DIRS}
 )
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++0x -flto -O3 -g -Wall -Wextra -Wpedantic -Wconversion")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17 -flto -O3 -g -Wall -Wextra -Wpedantic -Wconversion")
 
 #############
 ## Library ##
