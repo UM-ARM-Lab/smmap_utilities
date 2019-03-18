@@ -75,7 +75,7 @@ ssize_t UCB1NormalBandit::selectArmToPull(std::mt19937_64& generator) const
 
     for (size_t arm_ind = 0; arm_ind < num_arms_; arm_ind++)
     {
-        if (num_pulls_[arm_ind] < explore_threshold)
+        if ((double)(num_pulls_[arm_ind]) < explore_threshold)
         {
             if (num_pulls_[arm_ind] < lowest_num_exploration_pulls)
             {

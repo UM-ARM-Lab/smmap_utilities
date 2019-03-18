@@ -31,7 +31,7 @@ namespace smmap
         Eigen::VectorXd optimal_robot_command;
 
         // TODO: figure out a way to deal with logging, for now leave extra code here for reference
-        ofstream out(log_file_path.c_str(), ios::out);
+        std::ofstream out(log_file_path.c_str(), std::ios::out);
         // NOMAD::Display out (std::cout);
         out.precision(NOMAD::DISPLAY_PRECISION_STD);
 
@@ -46,7 +46,7 @@ namespace smmap
 
             // Set the output types for each black box function evaluation
             {
-                vector<NOMAD::bb_output_type> bbot (4); // definition of
+                std::vector<NOMAD::bb_output_type> bbot (4); // definition of
                 bbot[0] = NOMAD::OBJ;                   // output types
                 // TODO: might need to decide which kind of constraint to use
                 bbot[1] = NOMAD::PB;
@@ -111,13 +111,20 @@ namespace smmap
             mads.run();
 
             const NOMAD::Eval_Point* best_x = mads.get_best_feasible();
-
-            optimal_robot_command = ev.evalPointToRobotDOFDelta(*best_x);
-            assert(optimal_robot_command.size() == num_dof);
+            if (best_x != nullptr)
+            {
+                optimal_robot_command = ev.evalPointToRobotDOFDelta(*best_x);
+                assert(optimal_robot_command.size() == num_dof);
+            }
+            else
+            {
+                std::cerr << "   ---------  No output from NOMAD evaluator ------------, setting motion to zero" << std::endl;
+                optimal_robot_command = Eigen::VectorXd::Zero(num_dof);
+            }
         }
         catch (std::exception& e)
         {
-            cerr << "\nNOMAD has been interrupted (" << e.what() << ")\n\n";
+            std::cerr << "\nNOMAD has been interrupted (" << e.what() << ")\n\n";
             assert(false);
         }
 
@@ -192,12 +199,6 @@ namespace smmap
     Eigen::VectorXd RobotMotionNomadEvaluator::evalPointToRobotDOFDelta(
             const NOMAD::Eval_Point& x)
     {
-        if (&x == nullptr)
-        {
-            std::cerr << "   ---------  No output from NOMAD evaluator ------------" << std::endl;
-            assert(false);
-        }
-
         if (x.size() != num_dof_)
         {
             assert(false && "num_dof and eval_point x have different size");
@@ -233,7 +234,7 @@ namespace smmap
         const int x_dim = (int)(6 * num_grippers);
 
         // TODO: figure out a way to deal with logging, for now leave extra code here for reference
-        ofstream out(log_file_path.c_str(), ios::out);
+        std::ofstream out(log_file_path.c_str(), std::ios::out);
         // NOMAD::Display out (std::cout);
         out.precision(NOMAD::DISPLAY_PRECISION_STD);
 
@@ -248,7 +249,7 @@ namespace smmap
 
             // Set the output types for each black box function evaluation
             {
-                vector<NOMAD::bb_output_type> bbot (4); // definition of
+                std::vector<NOMAD::bb_output_type> bbot (4); // definition of
                 bbot[0] = NOMAD::OBJ;                   // output types
                 // TODO: might need to decide which kind of constraint to use
                 bbot[1] = NOMAD::PB;
@@ -308,13 +309,20 @@ namespace smmap
             mads.run();
 
             const NOMAD::Eval_Point* best_x = mads.get_best_feasible();
-
-            optimal_gripper_command = ev.evalPointToGripperPoseDelta(*best_x);
-            assert((ssize_t)(optimal_gripper_command.size()) == num_grippers);
+            if (best_x != nullptr)
+            {
+                optimal_gripper_command = ev.evalPointToGripperPoseDelta(*best_x);
+                assert((ssize_t)(optimal_gripper_command.size()) == num_grippers);
+            }
+            else
+            {
+                std::cerr << "   ---------  No output from NOMAD evaluator ------------, setting motion to zero" << std::endl;
+                optimal_gripper_command = AllGrippersSinglePoseDelta(num_grippers, kinematics::Vector6d::Zero());
+            }
         }
         catch (std::exception& e)
         {
-            cerr << "\nNOMAD has been interrupted (" << e.what() << ")\n\n";
+            std::cerr << "\nNOMAD has been interrupted (" << e.what() << ")\n\n";
             assert(false);
         }
 
@@ -382,12 +390,6 @@ namespace smmap
     AllGrippersSinglePoseDelta GripperMotionNomadEvaluator::evalPointToGripperPoseDelta(
             const NOMAD::Eval_Point& x)
     {
-        if (&x == nullptr)
-        {
-            std::cerr << "   ---------  No output from NOMAD evaluator ------------, setting motion to zero" << std::endl;
-            return AllGrippersSinglePoseDelta(num_grippers_, kinematics::Vector6d::Zero());
-        }
-
         const int single_gripper_dimension = 6;
         if (x.size() != num_grippers_ * single_gripper_dimension)
         {
