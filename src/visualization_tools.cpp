@@ -648,6 +648,72 @@ void Visualizer::visualizeSpheres(
     }
 }
 
+void Visualizer::visualizeCapsuleRope(
+        const std::string& marker_name,
+        const EigenHelpers::VectorIsometry3d& rope_node_transforms,
+        const std_msgs::ColorRGBA& color,
+        const int32_t id) const
+{
+    static const double rope_radius = GetRopeRadius(*nh_);
+    static const double rope_segment_length = GetRopeSegmentLength(*nh_);
+
+    if (!disable_all_visualizations_)
+    {
+        vm::Marker marker = createMarker(marker_name, EigenHelpers::VectorVector3d{}, id);
+
+        marker.type = vm::Marker::MESH_RESOURCE;
+        marker.mesh_resource = "package://smmap_utilities/meshes/capsule.stl";
+        marker.mesh_use_embedded_materials = false;
+        marker.color = color;
+
+        marker.scale.x = rope_radius * 2.0;
+        marker.scale.y = rope_radius * 2.0;
+        marker.scale.z = rope_segment_length;
+
+        for (size_t idx = 0; idx < rope_node_transforms.size(); ++idx)
+        {
+            marker.pose = EigenHelpersConversions::EigenIsometry3dToGeometryPose(
+                        rope_node_transforms[idx] * Eigen::AngleAxis(M_PI/2.0, Eigen::Vector3d::UnitY()));
+            publish(marker);
+            marker.id++;
+        }
+    }
+}
+
+void Visualizer::visualizeCapsuleRope(
+        const std::string& marker_name,
+        const EigenHelpers::VectorIsometry3d& rope_node_transforms,
+        const std::vector<std_msgs::ColorRGBA>& colors,
+        const int32_t id) const
+{
+    assert(rope_node_transforms.size() == colors.size());
+
+    static const double rope_radius = GetRopeRadius(*nh_);
+    static const double rope_segment_length = GetRopeSegmentLength(*nh_);
+
+    if (!disable_all_visualizations_)
+    {
+        vm::Marker marker = createMarker(marker_name, EigenHelpers::VectorVector3d{}, id);
+
+        marker.type = vm::Marker::MESH_RESOURCE;
+        marker.mesh_resource = "package://smmap_utilities/meshes/capsule.stl";
+        marker.mesh_use_embedded_materials = false;
+
+        marker.scale.x = rope_radius * 2.0;
+        marker.scale.y = rope_radius * 2.0;
+        marker.scale.z = rope_segment_length;
+
+        for (size_t idx = 0; idx < rope_node_transforms.size(); ++idx)
+        {
+            marker.color = colors[idx];
+            marker.pose = EigenHelpersConversions::EigenIsometry3dToGeometryPose(
+                        rope_node_transforms[idx] * Eigen::AngleAxis(M_PI/2.0, Eigen::Vector3d::UnitY()));
+            publish(marker);
+            marker.id++;
+        }
+    }
+}
+
 void Visualizer::visualizeRope(
         const std::string& marker_name,
         const ObjectPointSet& rope,
@@ -986,22 +1052,31 @@ void Visualizer::visualizeLineStrip(
 {
     if (!disable_all_visualizations_)
     {
-        vm::Marker marker;
-
-        marker.header.frame_id = world_frame_name_;
+        vm::Marker marker = createMarker(marker_name, point_sequence, id);
 
         marker.type = vm::Marker::LINE_STRIP;
-        marker.ns = marker_name;
-        marker.id = id;
         marker.scale.x = scale;
-
-        marker.points = ehc::VectorEigenVector3dToVectorGeometryPoint(point_sequence);
         marker.colors = std::vector<std_msgs::ColorRGBA>(marker.points.size(), color);
 
-        // Assumes that all non specified values are 0.0
-        marker.pose.orientation.w = 1.0;
+        publish(marker);
+    }
+}
 
-        marker.header.stamp = ros::Time::now();
+void Visualizer::visualizeLineStrip(
+        const std::string& marker_name,
+        const ObjectPointSet& point_sequence,
+        const std_msgs::ColorRGBA& color,
+        const int32_t id,
+        const double scale) const
+{
+    if (!disable_all_visualizations_)
+    {
+        vm::Marker marker = createMarker(marker_name, point_sequence, id);
+
+        marker.type = vm::Marker::LINE_STRIP;
+        marker.scale.x = scale;
+        marker.colors = std::vector<std_msgs::ColorRGBA>(marker.points.size(), color);
+
         publish(marker);
     }
 }

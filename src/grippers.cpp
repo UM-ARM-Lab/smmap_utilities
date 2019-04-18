@@ -95,6 +95,29 @@ namespace smmap
     }
 
     ////////////////////////////////////////////////////////////////////////////
+    // Distances
+    ////////////////////////////////////////////////////////////////////////////
+
+    // TODO: resolve duplicate code here and in the RRT codebase
+    double Distance(const AllGrippersSinglePose& c1,
+                    const AllGrippersSinglePose& c2,
+                    const bool include_rotation,
+                    const double lambda)
+    {
+        assert(c1.size() == c2.size());
+        double dist = 0.0;
+        for (size_t idx = 0; idx < c1.size(); ++idx)
+        {
+            dist += (c2[idx].translation() - c1[idx].translation()).norm();
+            if (include_rotation)
+            {
+                dist += lambda * EigenHelpers::Distance(c1[idx].rotation(), c2[idx].rotation());
+            }
+        }
+        return dist;
+    }
+
+    ////////////////////////////////////////////////////////////////////////////
     // Dot products
     ////////////////////////////////////////////////////////////////////////////
 

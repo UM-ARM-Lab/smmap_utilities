@@ -43,7 +43,6 @@ namespace smmap
 
         public:
             typedef std::shared_ptr<Visualizer> Ptr;
-            typedef std::shared_ptr<const Visualizer> ConstPtr;
 
             Visualizer(
                     std::shared_ptr<ros::NodeHandle> nh,
@@ -140,6 +139,18 @@ namespace smmap
                     const int32_t starting_id,
                     const std::vector<double>& radiuses) const;
 
+            void visualizeCapsuleRope(
+                    const std::string& marker_name,
+                    const EigenHelpers::VectorIsometry3d& rope_node_transforms,
+                    const std_msgs::ColorRGBA& color,
+                    const int32_t id = 1) const;
+
+            void visualizeCapsuleRope(
+                    const std::string& marker_name,
+                    const EigenHelpers::VectorIsometry3d& rope_node_transforms,
+                    const std::vector<std_msgs::ColorRGBA>& colors,
+                    const int32_t id = 1) const;
+
             void visualizeRope(
                     const std::string& marker_name,
                     const ObjectPointSet& rope,
@@ -233,6 +244,13 @@ namespace smmap
             void visualizeLineStrip(
                     const std::string& marker_name,
                     const EigenHelpers::VectorVector3d& point_sequence,
+                    const std_msgs::ColorRGBA& color,
+                    const int32_t id = 1,
+                    const double scale = 0.001) const;
+
+            void visualizeLineStrip(
+                    const std::string& marker_name,
+                    const ObjectPointSet& point_sequence,
                     const std_msgs::ColorRGBA& color,
                     const int32_t id = 1,
                     const double scale = 0.001) const;
