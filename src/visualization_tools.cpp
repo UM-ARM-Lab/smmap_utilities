@@ -673,7 +673,7 @@ void Visualizer::visualizeCapsuleRope(
         for (size_t idx = 0; idx < rope_node_transforms.size(); ++idx)
         {
             marker.pose = EigenHelpersConversions::EigenIsometry3dToGeometryPose(
-                        rope_node_transforms[idx] * Eigen::AngleAxis(M_PI/2.0, Eigen::Vector3d::UnitY()));
+                        rope_node_transforms[idx] * Eigen::AngleAxisd(M_PI/2.0, Eigen::Vector3d::UnitY()));
             publish(marker);
             marker.id++;
         }
@@ -707,7 +707,7 @@ void Visualizer::visualizeCapsuleRope(
         {
             marker.color = colors[idx];
             marker.pose = EigenHelpersConversions::EigenIsometry3dToGeometryPose(
-                        rope_node_transforms[idx] * Eigen::AngleAxis(M_PI/2.0, Eigen::Vector3d::UnitY()));
+                        rope_node_transforms[idx] * Eigen::AngleAxisd(M_PI/2.0, Eigen::Vector3d::UnitY()));
             publish(marker);
             marker.id++;
         }
