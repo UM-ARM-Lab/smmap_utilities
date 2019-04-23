@@ -1,6 +1,7 @@
 #ifndef NOMAD_SOLVERS_H
 #define NOMAD_SOLVERS_H
 
+#include <random>
 #include <nomad.hpp>
 #include <Eigen/Dense>
 #include <arc_utilities/eigen_helpers.hpp>

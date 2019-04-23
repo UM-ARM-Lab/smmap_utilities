@@ -31,7 +31,7 @@ namespace smmap_utilities
         Eigen::VectorXd optimal_robot_command;
 
         // TODO: figure out a way to deal with logging, for now leave extra code here for reference
-        ofstream out(log_file_path.c_str(), ios::out);
+        std::ofstream out(log_file_path.c_str(), std::ios::out);
         // NOMAD::Display out (std::cout);
         out.precision(NOMAD::DISPLAY_PRECISION_STD);
 
@@ -46,7 +46,7 @@ namespace smmap_utilities
 
             // Set the output types for each black box function evaluation
             {
-                vector<NOMAD::bb_output_type> bbot (4); // definition of
+                std::vector<NOMAD::bb_output_type> bbot (4); // definition of
                 bbot[0] = NOMAD::OBJ;                   // output types
                 // TODO: might need to decide which kind of constraint to use
                 bbot[1] = NOMAD::PB;
@@ -117,7 +117,7 @@ namespace smmap_utilities
         }
         catch (std::exception& e)
         {
-            cerr << "\nNOMAD has been interrupted (" << e.what() << ")\n\n";
+            std::cerr << "\nNOMAD has been interrupted (" << e.what() << ")\n\n";
             assert(false);
         }
 
@@ -233,7 +233,7 @@ namespace smmap_utilities
         const int x_dim = (int)(6 * num_grippers);
 
         // TODO: figure out a way to deal with logging, for now leave extra code here for reference
-        ofstream out(log_file_path.c_str(), ios::out);
+        std::ofstream out(log_file_path.c_str(), std::ios::out);
         // NOMAD::Display out (std::cout);
         out.precision(NOMAD::DISPLAY_PRECISION_STD);
 
@@ -248,7 +248,7 @@ namespace smmap_utilities
 
             // Set the output types for each black box function evaluation
             {
-                vector<NOMAD::bb_output_type> bbot (4); // definition of
+                std::vector<NOMAD::bb_output_type> bbot (4); // definition of
                 bbot[0] = NOMAD::OBJ;                   // output types
                 // TODO: might need to decide which kind of constraint to use
                 bbot[1] = NOMAD::PB;
@@ -314,7 +314,7 @@ namespace smmap_utilities
         }
         catch (std::exception& e)
         {
-            cerr << "\nNOMAD has been interrupted (" << e.what() << ")\n\n";
+            std::cerr << "\nNOMAD has been interrupted (" << e.what() << ")\n\n";
             assert(false);
         }
 
