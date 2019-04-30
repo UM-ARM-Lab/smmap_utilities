@@ -2,100 +2,9 @@
 
 #include <thread>
 #include <std_srvs/Empty.h>
+#include <arc_utilities/arc_helpers.hpp>
 #include <arc_utilities/eigen_helpers_conversions.hpp>
-//#include <arc_utilities/geometry_msgs_builders.hpp>
-
-
-
-
-
-
-
-
-#include <geometry_msgs/Pose.h>
-#include <geometry_msgs/Transform.h>
-
-namespace arc_utilities
-{
-    inline geometry_msgs::Point MakePoint(const double x, const double y, const double z)
-    {
-        geometry_msgs::Point point;
-        point.x = x;
-        point.y = y;
-        point.z = z;
-        return point;
-    }
-
-    inline geometry_msgs::Vector3 MakeVector3(const double x, const double y, const double z)
-    {
-        geometry_msgs::Vector3 vec;
-        vec.x = x;
-        vec.y = y;
-        vec.z = z;
-        return vec;
-    }
-
-    inline geometry_msgs::Quaternion MakeQuaternion(const double x, const double y, const double z, const double w)
-    {
-        geometry_msgs::Quaternion quat;
-        quat.x = x;
-        quat.y = y;
-        quat.z = z;
-        quat.w = w;
-        return quat;
-    }
-
-    inline geometry_msgs::Transform MakeTransform(
-            const geometry_msgs::Vector3& translation, const geometry_msgs::Quaternion& rotation)
-    {
-        geometry_msgs::Transform tf;
-        tf.translation = translation;
-        tf.rotation = rotation;
-        return tf;
-    }
-
-    inline geometry_msgs::Transform MakeTransform(
-            const geometry_msgs::Point& translation, const geometry_msgs::Quaternion& rotation)
-    {
-        geometry_msgs::Transform tf;
-        tf.translation.x = translation.x;
-        tf.translation.y = translation.y;
-        tf.translation.z = translation.z;
-        tf.rotation = rotation;
-        return tf;
-    }
-
-    inline geometry_msgs::Pose MakePose(
-            const geometry_msgs::Point& position, const geometry_msgs::Quaternion& orientation)
-    {
-        geometry_msgs::Pose pose;
-        pose.position = position;
-        pose.orientation = orientation;
-        return pose;
-    }
-
-    inline geometry_msgs::Pose MakePose(
-            const geometry_msgs::Vector3& position, const geometry_msgs::Quaternion& orientation)
-    {
-        geometry_msgs::Pose pose;
-        pose.position.x = position.x;
-        pose.position.y = position.y;
-        pose.position.z = position.z;
-        pose.orientation = orientation;
-        return pose;
-    }
-}
-
-
-
-
-
-
-
-
-
-
-
+#include <arc_utilities/geometry_msgs_builders.hpp>
 
 using namespace smmap;
 namespace vm = visualization_msgs;
@@ -473,6 +382,29 @@ void Visualizer::purgeMarkerList() const
     }
 }
 
+void Visualizer::deleteObject(
+        const std::string& marker_name,
+        const int32_t id) const
+{
+    if (disable_all_visualizations_)
+    {
+        return;
+    }
+    vm::Marker marker;
+    marker.header.frame_id = world_frame_name_;
+    marker.action = vm::Marker::DELETE;
+    marker.ns = marker_name;
+    marker.id = id;
+    marker.lifetime = ros::Duration(1.0);
+    publish(marker);
+
+    if (!publish_async_)
+    {
+        ros::spinOnce();
+        arc_helpers::Sleep(0.001);
+    }
+}
+
 void Visualizer::deleteObjects(
         const std::string& marker_name,
         const int32_t start_id,
@@ -537,12 +469,12 @@ void Visualizer::deleteObjects(
             if (id % 100 == 0)
             {
                 ros::spinOnce();
-                std::this_thread::sleep_for(std::chrono::duration<double>(0.001));
+                arc_helpers::Sleep(0.001);
             }
         }
 
         ros::spinOnce();
-        std::this_thread::sleep_for(std::chrono::duration<double>(0.001));
+        arc_helpers::Sleep(0.001);
     }
 }
 

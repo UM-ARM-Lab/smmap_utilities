@@ -66,6 +66,11 @@ namespace smmap
             // Converts all markers in the async publishing list to "delete" actions
             void deleteAll() const;
 
+            // Publishes a marker with the given name and id with the delete flag set
+            void deleteObject(
+                    const std::string& marker_name,
+                    const int32_t id = 1) const;
+
             // Publishes markers in namespace marker_name, with ids in the half
             // closed ranged [start_id, end_id) with the delete flag set
             void deleteObjects(
