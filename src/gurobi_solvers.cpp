@@ -2,7 +2,6 @@
 #include <gurobi_c++.h>
 #include <iostream>
 #include <Eigen/Eigenvalues>
-#include <arc_utilities/eigen_helpers.hpp>
 
 using namespace Eigen;
 using namespace EigenHelpers;

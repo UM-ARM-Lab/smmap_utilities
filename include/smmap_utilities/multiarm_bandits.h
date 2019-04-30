@@ -5,12 +5,10 @@
 #include <vector>
 #include <random>
 #include <utility>
-
-#include <Eigen/Eigenvalues>
+#include <Eigen/Dense>
 
 #include <arc_utilities/arc_helpers.hpp>
 #include <arc_utilities/pretty_print.hpp>
-#include <arc_utilities/eigen_helpers.hpp>
 
 namespace smmap
 {

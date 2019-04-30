@@ -6,7 +6,7 @@
 #include <assert.h>
 #include <ostream>
 
-#include <arc_utilities/eigen_helpers.hpp>
+#include <arc_utilities/eigen_typedefs.hpp>
 #include <arc_utilities/eigen_helpers_conversions.hpp>
 #include <arc_utilities/serialization.hpp>
 #include <arc_utilities/serialization_eigen.hpp>

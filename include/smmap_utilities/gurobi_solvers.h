@@ -2,7 +2,7 @@
 #define GUROBI_SOLVERS_H
 
 #include <Eigen/Dense>
-#include <arc_utilities/eigen_helpers.hpp>
+#include <arc_utilities/eigen_typedefs.hpp>
 
 namespace smmap
 {

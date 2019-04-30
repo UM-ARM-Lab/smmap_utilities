@@ -1,4 +1,5 @@
 #include "smmap_utilities/grippers.h"
+#include <arc_utilities/eigen_helpers.hpp>
 
 namespace smmap
 {

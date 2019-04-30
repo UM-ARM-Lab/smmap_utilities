@@ -2,6 +2,7 @@
 
 #include <iostream>
 #include <arc_utilities/arc_helpers.hpp>
+#include <arc_utilities/math_helpers.hpp>
 
 namespace smmap
 {

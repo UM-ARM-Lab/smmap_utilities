@@ -8,7 +8,7 @@
 #include <ros/ros.h>
 #include <visualization_msgs/MarkerArray.h>
 #include <deformable_manipulation_experiment_params/ros_params.hpp>
-#include <arc_utilities/eigen_helpers.hpp>
+#include <arc_utilities/eigen_typedefs.hpp>
 
 namespace smmap
 {

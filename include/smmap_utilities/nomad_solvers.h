@@ -4,7 +4,6 @@
 #include <random>
 #include <nomad.hpp>
 #include <Eigen/Dense>
-#include <arc_utilities/eigen_helpers.hpp>
 #include <kinematics_toolbox/kinematics.h>
 
 namespace smmap
