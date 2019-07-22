@@ -1,5 +1,6 @@
 #include "smmap_utilities/grippers.h"
 #include <arc_utilities/eigen_helpers.hpp>
+#include <arc_utilities/arc_exceptions.hpp>
 
 namespace smmap
 {
@@ -62,7 +63,6 @@ namespace smmap
         }
         return {min_dist, min_ind};
     }
-
 
     ////////////////////////////////////////////////////////////////////////////
     // Basic Math

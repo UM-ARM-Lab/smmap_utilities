@@ -5,6 +5,7 @@
 #include <arc_utilities/arc_helpers.hpp>
 #include <arc_utilities/eigen_helpers_conversions.hpp>
 #include <arc_utilities/geometry_msgs_builders.hpp>
+#include <arc_utilities/ros_helpers.hpp>
 
 using namespace smmap;
 namespace vm = visualization_msgs;
