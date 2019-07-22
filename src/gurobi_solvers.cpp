@@ -873,6 +873,67 @@ VectorXd smmap::minSquaredNorm_SE3VelocityConstraints_QuadraticConstraints(
     {
         std::cout << "Error code = " << e.getErrorCode() << std::endl;
         std::cout << e.getMessage() << std::endl;
+
+        std::cout << "\n\n\n\n\n";
+
+        std::cout << "Max se3 norm: " << max_se3_velocity << std::endl;
+
+        std::cout << "J_matrix = [\n" << J << "];\n";
+
+
+        std::cout << "A_matrix = [\n" << A << "];\n";
+        std::cout << "b_vector = [" << b.transpose() << "]';\n";
+        std::cout << "Weights  = [" << weights.transpose() << "]';\n";
+
+
+
+        std::cout << "Linear_constraint_linear_terms = [\n";
+        for (size_t idx = 0; idx < linear_constraint_linear_terms.size(); ++idx)
+        {
+            std::cout << linear_constraint_linear_terms[idx] << std::endl;
+        }
+        std::cout << "];\n";
+
+        std::cout << "Linear_constraint_affine_terms = [";
+        for (size_t idx = 0; idx < linear_constraint_affine_terms.size(); ++idx)
+        {
+            std::cout << linear_constraint_affine_terms[idx] << " ";
+        }
+        std::cout << "]';\n";
+
+
+
+        std::cout << "Quadratic_constraint_quadratic_terms = [\n";
+        for (size_t idx = 0; idx < quadratic_constraint_quadratic_terms.size(); ++idx)
+        {
+            std::cout << quadratic_constraint_quadratic_terms[idx] << std::endl;
+        }
+        std::cout << "];\n";
+
+        std::cout << "Quadratic_constraint_linear_terms = [\n";
+        for (size_t idx = 0; idx < quadratic_constraint_linear_terms.size(); ++idx)
+        {
+            std::cout << quadratic_constraint_linear_terms[idx] << std::endl;
+        }
+        std::cout << "];\n";
+
+        std::cout << "Quadratic_constraint_affine_terms = [";
+        for (size_t idx = 0; idx < quadratic_constraint_affine_terms.size(); ++idx)
+        {
+            std::cout << quadratic_constraint_affine_terms[idx] << " ";
+        }
+        std::cout << "]';\n";
+
+
+
+        std::cout << "x_lower_bound = [" << x_lower_bound.transpose() << "]';\n";
+        std::cout << "x_upper_bound = [" << x_upper_bound.transpose() << "]';\n";
+        std::cout << std::endl;
+
+        std::cout << "\n\n\n\n\n";
+
+
+        x = VectorXd::Zero(A.cols());
     }
     catch(...)
     {
