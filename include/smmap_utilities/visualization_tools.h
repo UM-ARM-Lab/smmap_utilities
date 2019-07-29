@@ -53,6 +53,8 @@ namespace smmap
 
             ~Visualizer();
 
+            bool visualizationsEnabled() const { return !disable_all_visualizations_; }
+
             void publish(const visualization_msgs::Marker& marker) const;
 
             void publish(const visualization_msgs::MarkerArray& marker_array) const;

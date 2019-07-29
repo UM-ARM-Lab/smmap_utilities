@@ -184,6 +184,9 @@ namespace smmap
     PairGripperPositions ToGripperPositions(
             const PairGripperPoses& poses);
 
+    AllGrippersSinglePose ToGripperPoseVector(
+            const PairGripperPoses& poses_pair);
+
     // TODO:
     // # warning "Re-evaluate now this gripper pose delta math is done - remember Ruikun's example where the gripper went the wrong way"
     AllGrippersSinglePoseDelta CalculateGrippersPoseDelta(

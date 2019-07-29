@@ -182,6 +182,12 @@ namespace smmap
         return {poses.first.translation(), poses.second.translation()};
     }
 
+    AllGrippersSinglePose ToGripperPoseVector(
+            const PairGripperPoses& poses_pair)
+    {
+        return {poses_pair.first, poses_pair.second};
+    }
+
     // TODO:
     // # warning "Re-evaluate now this gripper pose delta math is done - remember Ruikun's example where the gripper went the wrong way"
     AllGrippersSinglePoseDelta CalculateGrippersPoseDelta(
