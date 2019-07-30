@@ -240,9 +240,11 @@ Visualizer::Visualizer(
 
 Visualizer::~Visualizer()
 {
-    if (publish_async_)
+    if (!disable_all_visualizations_ && publish_async_)
     {
+        // Tell the async thread to stop looping
         running_async_ = false;
+        // Clean up our thread
         publish_thread_.join();
     }
 }
