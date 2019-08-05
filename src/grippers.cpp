@@ -126,6 +126,9 @@ namespace smmap
             const kinematics::Vector6d& vel1,
             const kinematics::Vector6d& vel2)
     {
+        #pragma message "SE(3) velocity weight hard coded here"
+        static constexpr double GRIPPER_VELOCITY_ROTATION_WEIGHT = 1.0/20.0;
+
         kinematics::Vector6d weight = kinematics::Vector6d::Ones();
         weight(3) = GRIPPER_VELOCITY_ROTATION_WEIGHT;
         weight(4) = GRIPPER_VELOCITY_ROTATION_WEIGHT;
