@@ -217,7 +217,7 @@ Visualizer::Visualizer(
     , ph_(ph)
     , publish_async_(publish_async)
     , running_async_(false)
-    , disable_all_visualizations_(GetDisableAllVisualizations(*ph_))
+    , disable_all_visualizations_(GetDisableSmmapVisualizations(*ph_))
     , clear_markers_srv_(nh_->serviceClient<std_srvs::Empty>(GetClearVisualizationsTopic(*nh_), true))
     , world_frame_name_(GetWorldFrameName())
     , gripper_apperture_(GetGripperApperture(*nh_))
