@@ -196,6 +196,12 @@ namespace smmap
                     const std_msgs::ColorRGBA& color,
                     const int32_t id = 1) const;
 
+            std::vector<NamespaceId> visualizeGrippers(
+                    const std::string& marker_name,
+                    const std::pair<Eigen::Vector3d, Eigen::Vector3d> eigen_positions,
+                    const std_msgs::ColorRGBA& color,
+                    const int32_t id = 1) const;
+
             std::vector<NamespaceId> visualizeObjectDelta(
                     const std::string& marker_name,
                     const ObjectPointSet& current,

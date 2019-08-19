@@ -917,6 +917,18 @@ std::vector<Visualizer::NamespaceId> Visualizer::visualizeGrippers(
     return marker_ids;
 }
 
+std::vector<Visualizer::NamespaceId> Visualizer::visualizeGrippers(
+        const std::string& marker_name,
+        const std::pair<Eigen::Vector3d, Eigen::Vector3d> eigen_positions,
+        const std_msgs::ColorRGBA& color,
+        const int32_t id) const
+{
+    EigenHelpers::VectorIsometry3d eigen_poses(2, Eigen::Isometry3d::Identity());
+    eigen_poses[0].translation() = eigen_positions.first;
+    eigen_poses[1].translation() = eigen_positions.second;
+    return visualizeGrippers(marker_name, eigen_poses, color, id);
+}
+
 std::vector<Visualizer::NamespaceId> Visualizer::visualizeObjectDelta(
         const std::string& marker_name,
         const ObjectPointSet& current,
