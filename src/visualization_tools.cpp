@@ -227,7 +227,10 @@ Visualizer::Visualizer(
     {
         return;
     }
-    clear_markers_srv_.waitForExistence();
+    if (ROSHelpers::GetParam<bool>(*nh_, "deform_simulator_node/start_bullet_viewer", false))
+    {
+        clear_markers_srv_.waitForExistence();
+    }
     visualization_marker_pub_ = nh_->advertise<vm::Marker>(GetVisualizationMarkerTopic(*nh_), 256);
     visualization_maker_array_pub_ = nh_->advertise<vm::MarkerArray>(GetVisualizationMarkerArrayTopic(*nh_), 1);
 
@@ -327,6 +330,11 @@ void Visualizer::clearVisualizationsBullet()
 {
     if (disable_all_visualizations_)
     {
+        return;
+    }
+    if (!ROSHelpers::GetParam<bool>(*nh_, "deform_simulator_node/start_bullet_viewer", false))
+    {
+        ROS_WARN_NAMED("visualizer", "Attempted to clear Bullet visualizations, but start_bullet_viewer is set to false");
         return;
     }
     std_srvs::Empty srv_data;
