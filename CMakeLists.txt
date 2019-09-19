@@ -18,8 +18,7 @@ find_package(catkin REQUIRED COMPONENTS ${CATKIN_PACKAGES})
 ## System dependencies are found with CMake's conventions
 find_package(cmake_modules REQUIRED)
 find_package(Eigen3 REQUIRED)
-set(Eigen3_INCLUDE_DIRS ${EIGEN3_INCLUDE_DIR})
-find_package(PythonLibs 2.7 REQUIRED)
+set(EIGEN3_INCLUDE_DIRS ${EIGEN3_INCLUDE_DIR})
 find_package(GUROBI REQUIRED)
 find_package(NOMAD REQUIRED)
 
@@ -32,11 +31,9 @@ catkin_package(
     INCLUDE_DIRS    include
     LIBRARIES       ${PROJECT_NAME}
     CATKIN_DEPENDS  ${CATKIN_PACKAGES}
-    DEPENDS         Eigen3
+    DEPENDS         EIGEN3
                     GUROBI
                     NOMAD
-                    PYTHON
-
 )
 
 ###########
@@ -48,7 +45,6 @@ catkin_package(
 include_directories(include
     SYSTEM
     ${catkin_INCLUDE_DIRS}
-    ${PYTHON_INCLUDE_DIRS}
     ${EIGEN3_INCLUDE_DIRS}
     ${GUROBI_INCLUDE_DIRS}
     ${NOMAD_INCLUDE_DIRS}
@@ -68,5 +64,5 @@ FILE(GLOB cpp_SRC "src/*.cpp")
 add_custom_target(${PROJECT_NAME}_headers SOURCES ${hpp_SRC} ${h_SRC})
 add_library(${PROJECT_NAME} ${cpp_SRC})
 add_dependencies(${PROJECT_NAME} ${catkin_EXPORTED_TARGETS})
-target_link_libraries(${PROJECT_NAME} ${catkin_LIBRARIES} ${GUROBI_LIBRARIES} ${NOMAD_LIBRARIES} ${PYTHON_LIBRARIES})
+target_link_libraries(${PROJECT_NAME} ${catkin_LIBRARIES} ${GUROBI_LIBRARIES} ${NOMAD_LIBRARIES})
 
