@@ -182,6 +182,9 @@ namespace smmap
     PairGripperPositions ToGripperPositions(
             const PairGripperPoses& poses);
 
+    PairGripperPoses ToGripperPosePair(
+            const AllGrippersSinglePose& poses_vector);
+
     AllGrippersSinglePose ToGripperPoseVector(
             const PairGripperPoses& poses_pair);
 

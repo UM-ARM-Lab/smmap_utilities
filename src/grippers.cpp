@@ -99,7 +99,7 @@ namespace smmap
     // Distances
     ////////////////////////////////////////////////////////////////////////////
 
-    // TODO: resolve duplicate code here and in the RRT codebase
+    // TODO: resolve duplicate code here and in the RRT codebase (and eigen_helpers.hpp codebase)
     double Distance(const AllGrippersSinglePose& c1,
                     const AllGrippersSinglePose& c2,
                     const bool include_rotation,
@@ -183,6 +183,13 @@ namespace smmap
             const PairGripperPoses &poses)
     {
         return {poses.first.translation(), poses.second.translation()};
+    }
+
+    PairGripperPoses ToGripperPosePair(
+            const AllGrippersSinglePose& poses_vector)
+    {
+        assert(poses_vector.size() == 2);
+        return {poses_vector[0], poses_vector[1]};
     }
 
     AllGrippersSinglePose ToGripperPoseVector(
