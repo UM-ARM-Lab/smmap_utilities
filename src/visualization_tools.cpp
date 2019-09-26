@@ -651,7 +651,7 @@ std::vector<Visualizer::NamespaceId> Visualizer::visualizeSpheres(
     vm::Marker marker = createMarker(marker_name, points, id);
 
     marker.type = vm::Marker::SPHERE_LIST;
-    marker.scale = au::MakeVector3(radius * 2.0, radius * 2.0, radius * 2.0);
+    marker.scale = au::rmb::MakeVector3(radius * 2.0, radius * 2.0, radius * 2.0);
     marker.color = color;
 
     publish(marker);
@@ -897,8 +897,8 @@ std::vector<Visualizer::NamespaceId> Visualizer::visualizeGripper(
     marker.pose = ehc::EigenIsometry3dToGeometryPose(eigen_pose);
     marker.color = color;
 
-    marker.points.push_back(au::MakePoint(0.0, 0.0, gripper_apperture_ * 0.5));
-    marker.points.push_back(au::MakePoint(0.0, 0.0, -gripper_apperture_ * 0.5));
+    marker.points.push_back(au::rmb::MakePoint(0.0, 0.0, gripper_apperture_ * 0.5));
+    marker.points.push_back(au::rmb::MakePoint(0.0, 0.0, -gripper_apperture_ * 0.5));
 
     publish(marker);
     return {NamespaceId{marker.ns, marker.id}};
@@ -1247,18 +1247,18 @@ std::vector<Visualizer::NamespaceId> Visualizer::visualizeAxes(
 
     marker.pose = ehc::EigenIsometry3dToGeometryPose(axes);
     // X-axis
-    marker.points.push_back(au::MakePoint(0.0, 0.0, 0.0));
-    marker.points.push_back(au::MakePoint(length, 0.0, 0.0));
+    marker.points.push_back(au::rmb::MakePoint(0.0, 0.0, 0.0));
+    marker.points.push_back(au::rmb::MakePoint(length, 0.0, 0.0));
     marker.colors.push_back(Red());
     marker.colors.push_back(Red());
     // Y-axis
-    marker.points.push_back(au::MakePoint(0.0, 0.0, 0.0));
-    marker.points.push_back(au::MakePoint(0.0, length, 0.0));
+    marker.points.push_back(au::rmb::MakePoint(0.0, 0.0, 0.0));
+    marker.points.push_back(au::rmb::MakePoint(0.0, length, 0.0));
     marker.colors.push_back(Green());
     marker.colors.push_back(Green());
     // Z-axis
-    marker.points.push_back(au::MakePoint(0.0, 0.0, 0.0));
-    marker.points.push_back(au::MakePoint(0.0, 0.0, length));
+    marker.points.push_back(au::rmb::MakePoint(0.0, 0.0, 0.0));
+    marker.points.push_back(au::rmb::MakePoint(0.0, 0.0, length));
     marker.colors.push_back(Blue());
     marker.colors.push_back(Blue());
 
