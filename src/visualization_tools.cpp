@@ -291,6 +291,19 @@ void Visualizer::publish(const vm::MarkerArray& marker_array) const
     }
 }
 
+void Visualizer::purgeAndPublishDeleteAllAction() const
+{
+    purgeMarkerList();
+    visualization_msgs::Marker marker;
+    marker.ns = "delete_markers";
+    marker.action = visualization_msgs::Marker::DELETEALL;
+    marker.header.frame_id = "world_origin";
+    marker.header.stamp = ros::Time::now();
+    publish(marker);
+    forcePublishNow();
+    purgeMarkerList();
+}
+
 void Visualizer::forcePublishNow(const double last_delay) const
 {
     if (disable_all_visualizations_)
